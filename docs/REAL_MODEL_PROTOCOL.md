@@ -2,6 +2,8 @@
 
 The simulations make assumptions that only real models can confirm or refute. This is the experiment that would do it. It is a draft: criticism is welcome before it is run.
 
+A first, minimal implementation is in [`realtest/`](../realtest/README.md): one task, four sizes of one model family, runnable on a CPU.
+
 ## Setup
 
 - **Models.** Three open-weight models of clearly different size, served locally behind the same API.

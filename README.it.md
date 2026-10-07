@@ -181,6 +181,7 @@ experiments/            uno script per esperimento, più run_all
 results/                RESULTS.md e un CSV per tabella
 docs/                   metodo, casi d'uso, protocollo per modelli reali, questioni aperte
 paper/                  rapporto tecnico, in italiano e in inglese, con le figure
+realtest/               primo test su modelli reali: script, risultati salvati, rapporto
 tests/                  test unitari
 ```
 

@@ -179,6 +179,7 @@ experiments/            one script per experiment, plus run_all
 results/                RESULTS.md and one CSV per table
 docs/                   method, use cases, real-model protocol, open questions
 paper/                  technical report, English and Italian, with its figures
+realtest/               first real-model test: scripts, stored outputs, report
 tests/                  unit tests
 ```
 
