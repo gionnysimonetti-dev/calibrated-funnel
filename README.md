@@ -2,22 +2,34 @@
 
 **When is a third stage worth it?** A reproducible toolkit for planning model cascades on local hardware, one use case at a time.
 
+*Leggi in italiano: [README.it.md](README.it.md)*
+
 In a cascade, a small model answers first and a query moves up to a larger model only when a calibrated confidence stays below a threshold. Published work shows this saves compute with two tiers. This repository asks the next practical question: for a given workload, should there be a third stage, and what should it be: a middle model, a deterministic rule stage, or nothing?
 
 **Status: simulation only.** Every number here comes from synthetic data. No real model has been run yet. The protocol for real models is in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), and help running it is welcome.
 
-## The short answer (simulated)
+## The short answer: the 5x rule (simulated)
 
-| Situation | Third stage | Effect on compute saved |
+Take the cost ratio between neighbouring models: small to medium, medium to large.
+
+| Situation | Third stage | Effect on compute saved, against two models |
 | --- | --- | --- |
-| Models far apart in cost (5x or more between neighbours), weak confidence signal, mostly easy queries | A middle model | +7 to +12 points |
-| Models close in cost (about 3x between neighbours) | A deterministic rule stage, not a middle model | Rule stage +2 to +6 points; a middle model -4 to -10 |
-| Models far apart in cost, good confidence signal | None | A third stage adds 2 points at most |
+| Under 5x | Rules, not a model | Rules that answer 30% of queries: 0 to +18 points. A middle model loses in 36 of 45 simulated workloads, by up to 24 points |
+| 5x or more, weak confidence signal | A middle model | 0 to +15 points. Rules still add 1 to 10 points at 30% coverage |
+| 5x or more, good or medium confidence signal | None | A middle model moves the saving by -6 to +4 points |
 | Few easy queries | No cascade at all | The large model alone is as cheap or cheaper |
+
+The best third stage is often not a model. A deterministic rule stage (exact codes, lookups, fixed business rules) never cost more than 3 points in these simulations; a middle model cost up to 24. What rules gain depends on how much they cover: at 10% coverage the gain is small, -2 to +6 points below 5x.
+
+This is a rule of thumb drawn from simulated workloads (experiment 8), and its edges are soft: at 3x to 4x, with a weak signal and mostly easy queries, a middle model already gains up to 4 points. It is the claim this repository most wants tested on real models.
 
 The saving itself is set by the workload, not by the method: the share of easy queries and the cost ratio between models decide most of it.
 
 ## Plan your own workload
+
+**In the browser.** Open [calculator/index.html](calculator/index.html): four numbers in, the design worth testing out. No install and no server, in English and Italian. It is a JavaScript port of the planner below; on eight test profiles it gives the same recommendation, with savings within 2 points.
+
+**From the command line.**
 
 ```bash
 python -m funnel.planner --easy 0.6 --rules 0.1 --costs 1 3 9 --signal weak
@@ -34,7 +46,7 @@ rules > large model only                    10%      -0.0
 simplest design within 2 points of the best: rules > small > large
 ```
 
-`--easy` is the share of easy queries, `--rules` the share a deterministic first stage can answer outright, `--costs` the relative compute of the small, medium and large model, `--signal` the quality of the confidence signal. The output is a what-if under the simulation's assumptions: it tells which designs are worth measuring, not what a real system will save.
+`--easy` is the share of easy queries, `--rules` the share a deterministic first stage can answer outright, `--costs` the relative compute of the small, medium and large model, `--signal` the quality of the confidence signal (`good`, `medium` or `weak`). The output is a what-if under the simulation's assumptions: it tells which designs are worth measuring, not what a real system will save.
 
 ## Use cases
 
@@ -46,9 +58,9 @@ Confidence-gated cascades are not new, including with calibrated confidence and 
 
 What it adds:
 
-- **A decision rule for the third stage**, by cost ladder, confidence quality and workload.
+- **The 5x rule**: a decision rule for the third stage, by cost ladder, confidence quality and workload.
 - **A deterministic rule stage as a first-class stage**: exact lookups and business rules answer what they can before any model runs.
-- **A planner** that turns four measurable numbers into a shortlist of designs to test.
+- **A planner** that turns four measurable numbers into a shortlist of designs to test, from the command line or in the browser.
 - **Continuous verification**: chi-square tests that say when calibration has drifted and when the mix of queries has changed.
 - **Code that reproduces every figure** with one command, so the claims can be checked, broken or improved.
 
@@ -91,6 +103,8 @@ Points of saving gained or lost by adding the middle model, with a weak confiden
 | 1 : 8 : 70 | +5 | +12 | +9 |
 
 With a good signal the middle model gains 2 points at most and loses up to 23 when costs are close.
+
+Experiment 8 sweeps the ratio between neighbouring models from 2x to 10x, with three signal qualities, and compares a rule stage with a middle model as the third stage. The 5x rule comes from there.
 
 ### Sanity check against published results
 
@@ -138,15 +152,15 @@ Things tested that did not survive:
 
 - A universal set of reduction coefficients. The best ones depend on the number of candidates and on the noise.
 - A special role for prime numbers, Fibonacci numbers or other named sequences. A generic schedule growing 1.4x per stage matches or beats every named sequence tried (experiment 5).
-- A third model as a general improvement. It helps in one corner of the space and hurts elsewhere (experiment 6).
+- A third model as a general improvement. It helps in one corner of the space and hurts elsewhere (experiments 6 and 8).
 - Fixed evidence thresholds in the style of a sequential probability ratio test. In preliminary tests, not included here, they did not beat fixed fractions under a fixed budget.
 
 ## Reproduce
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # about a second
-python -m experiments.run_all       # about three minutes, rewrites results/
+python -m pytest -q                 # about two seconds
+python -m experiments.run_all       # about five minutes, rewrites results/
 ```
 
 Seeds are fixed per experimental cell, so the output is identical on every run with the same library versions.
@@ -156,6 +170,7 @@ Seeds are fixed per experimental cell, so the output is identical on every run w
 ```
 funnel/routing.py       confidence-gated cascade of models, with an optional rule stage
 funnel/planner.py       what-if planner for a workload profile
+calculator/index.html   the planner in the browser, English and Italian
 funnel/selection.py     staged elimination, single evaluator and cascade of evaluators
 funnel/confidence.py    covariance weights, chi-square confidence, calibration and drift tests
 experiments/            one script per experiment, plus run_all

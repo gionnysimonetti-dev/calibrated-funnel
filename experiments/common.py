@@ -23,7 +23,7 @@ def seed_for(*key) -> int:
 
 def write_csv(name: str, header, rows) -> None:
     with open(RESULTS / name, "w", newline="") as fh:
-        writer = csv.writer(fh)
+        writer = csv.writer(fh, lineterminator="\n")
         writer.writerow(header)
         writer.writerows(rows)
 

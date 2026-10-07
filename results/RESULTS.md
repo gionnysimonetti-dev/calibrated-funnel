@@ -194,3 +194,129 @@ Illustrative workload profiles, not measurements. Saving versus the large model 
 | Sales assistant turns (60%, 10%, weak) | rules > small > large | 29% | 21% | 10% | 33% | 25% |
 | Document field extraction (50%, 20%, weak) | rules > small > large | 23% | 13% | 20% | 29% | 17% |
 | Open-ended analysis (10%, 0%, weak) | large model only | -4% | -29% | n/a | n/a | n/a |
+
+## Experiment 8. The 5x rule: which third stage, at which distance between models?
+
+Cost ladders 1 : r : r^2, where r is the cost ratio between neighbouring models. Points of compute saving gained (+) or lost (-) against small > large, at equal accuracy.
+
+**Adding a middle model**
+
+Good confidence signal:
+
+| Ratio between neighbours | 50% easy queries | 60% easy queries | 70% easy queries | 80% easy queries | 90% easy queries |
+| --- | --- | --- | --- | --- | --- |
+| 2x | -18 | -16 | -9 | -7 | -1 |
+| 3x | -11 | -10 | -5 | -4 | -1 |
+| 4x | -6 | -7 | -3 | -2 | +1 |
+| 5x | -5 | -4 | -1 | -2 | +0 |
+| 6x | -2 | -3 | +0 | -0 | +2 |
+| 8x | -0 | +0 | -0 | +1 | +2 |
+| 10x | -0 | -1 | +0 | -0 | +1 |
+
+Medium confidence signal:
+
+| Ratio between neighbours | 50% easy queries | 60% easy queries | 70% easy queries | 80% easy queries | 90% easy queries |
+| --- | --- | --- | --- | --- | --- |
+| 2x | -24 | -16 | -13 | -7 | -2 |
+| 3x | -14 | -6 | -7 | -3 | -1 |
+| 4x | -9 | -6 | -4 | -2 | +0 |
+| 5x | -6 | -1 | -2 | +1 | +1 |
+| 6x | -4 | -1 | -1 | +2 | +1 |
+| 8x | -1 | -0 | +1 | +2 | +2 |
+| 10x | +0 | +1 | +2 | +4 | +2 |
+
+Weak confidence signal:
+
+| Ratio between neighbours | 50% easy queries | 60% easy queries | 70% easy queries | 80% easy queries | 90% easy queries |
+| --- | --- | --- | --- | --- | --- |
+| 2x | -23 | -18 | -10 | -6 | -2 |
+| 3x | -10 | -6 | -0 | +1 | +3 |
+| 4x | -4 | +0 | +4 | +4 | +4 |
+| 5x | -0 | +3 | +4 | +8 | +6 |
+| 6x | +2 | +5 | +6 | +9 | +9 |
+| 8x | +3 | +7 | +9 | +12 | +12 |
+| 10x | +5 | +15 | +11 | +11 | +10 |
+
+**Adding a rule stage instead** (rule stage / middle model, same queries)
+
+Good confidence signal, rules answer 10% of queries:
+
+| Ratio between neighbours | 50% easy queries | 70% easy queries | 90% easy queries |
+| --- | --- | --- | --- |
+| 2x | +2 / -18 | +2 / -9 | +2 / -1 |
+| 3x | -0 / -11 | +1 / -5 | +1 / -1 |
+| 4x | +1 / -6 | +1 / -3 | +1 / +1 |
+| 5x | +0 / -5 | +0 / -1 | +0 / +0 |
+| 6x | +0 / -2 | +0 / +0 | +0 / +2 |
+| 8x | +0 / -0 | -1 / -0 | +0 / +2 |
+| 10x | -2 / -0 | -0 / +0 | +0 / +1 |
+
+Good confidence signal, rules answer 30% of queries:
+
+| Ratio between neighbours | 50% easy queries | 70% easy queries | 90% easy queries |
+| --- | --- | --- | --- |
+| 2x | +7 / -18 | +7 / -9 | +7 / -1 |
+| 3x | +2 / -11 | +3 / -5 | +3 / -1 |
+| 4x | +2 / -6 | +0 / -3 | +2 / +1 |
+| 5x | -1 / -5 | -0 / -1 | +1 / +0 |
+| 6x | +1 / -2 | +1 / +0 | +1 / +2 |
+| 8x | +1 / -0 | -0 / -0 | +0 / +2 |
+| 10x | -2 / -0 | -2 / +0 | +0 / +1 |
+
+Medium confidence signal, rules answer 10% of queries:
+
+| Ratio between neighbours | 50% easy queries | 70% easy queries | 90% easy queries |
+| --- | --- | --- | --- |
+| 2x | +1 / -24 | +3 / -13 | +2 / -2 |
+| 3x | +2 / -14 | +2 / -7 | +1 / -1 |
+| 4x | -1 / -9 | -1 / -4 | +1 / +0 |
+| 5x | -1 / -6 | -1 / -2 | +1 / +1 |
+| 6x | +1 / -4 | -1 / -1 | +0 / +1 |
+| 8x | -1 / -1 | +1 / +1 | +0 / +2 |
+| 10x | +1 / +0 | +1 / +2 | +0 / +2 |
+
+Medium confidence signal, rules answer 30% of queries:
+
+| Ratio between neighbours | 50% easy queries | 70% easy queries | 90% easy queries |
+| --- | --- | --- | --- |
+| 2x | +9 / -24 | +8 / -13 | +8 / -2 |
+| 3x | +6 / -14 | +4 / -7 | +3 / -1 |
+| 4x | +3 / -9 | +2 / -4 | +1 / +0 |
+| 5x | +3 / -6 | +2 / -2 | +1 / +1 |
+| 6x | +3 / -4 | -1 / -1 | +1 / +1 |
+| 8x | +2 / -1 | -1 / +1 | -0 / +2 |
+| 10x | +2 / +0 | +2 / +2 | -1 / +2 |
+
+Weak confidence signal, rules answer 10% of queries:
+
+| Ratio between neighbours | 50% easy queries | 70% easy queries | 90% easy queries |
+| --- | --- | --- | --- |
+| 2x | +0 / -23 | +6 / -10 | +4 / -2 |
+| 3x | +1 / -10 | +4 / -0 | +3 / +3 |
+| 4x | -0 / -4 | +4 / +4 | -3 / +4 |
+| 5x | +4 / -0 | +4 / +4 | +2 / +6 |
+| 6x | +4 / +2 | +3 / +6 | +2 / +9 |
+| 8x | -3 / +3 | +3 / +9 | +2 / +12 |
+| 10x | -2 / +5 | +3 / +11 | +2 / +10 |
+
+Weak confidence signal, rules answer 30% of queries:
+
+| Ratio between neighbours | 50% easy queries | 70% easy queries | 90% easy queries |
+| --- | --- | --- | --- |
+| 2x | +15 / -23 | +17 / -10 | +12 / -2 |
+| 3x | +12 / -10 | +13 / -0 | +5 / +3 |
+| 4x | +10 / -4 | +12 / +4 | +2 / +4 |
+| 5x | +9 / -0 | +6 / +4 | +1 / +6 |
+| 6x | +9 / +2 | +5 / +6 | +6 / +9 |
+| 8x | +7 / +3 | +10 / +9 | +5 / +12 |
+| 10x | +7 / +5 | +10 / +11 | +5 / +10 |
+
+**Summary: range of the gain below and from 5x**
+
+| Third stage | Below 5x | 5x or more |
+| --- | --- | --- |
+| Rule stage | -3 to +17 | -3 to +10 |
+| Middle model, weak signal | -23 to +4 | +0 to +15 |
+| Middle model, good or medium signal | -24 to +1 | -6 to +4 |
+
+Below 5x the middle model gains half a point or more in 6 of 45 cells. The rule stage is idealised: 99.5% accurate on what it answers, firing only on easy queries.

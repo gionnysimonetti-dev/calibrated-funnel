@@ -16,7 +16,7 @@ import argparse
 
 from .routing import RoutingWorld, RuleStage, evaluate
 
-SIGNAL_NOISE = {"good": 0.5, "weak": 1.5}
+SIGNAL_NOISE = {"good": 0.5, "medium": 1.0, "weak": 1.5}
 MODEL_DESIGNS = (
     ("large model only", (2,)),
     ("small > large", (0, 2)),
@@ -28,9 +28,12 @@ NEAR_BEST = 0.02    # designs within this margin of the best are treated as equi
 
 def plan(easy=0.7, rules=0.0, costs=(1.0, 8.0, 70.0), signal="good", rule_cost=0.01,
          rule_accuracy=0.995, tolerance=0.005, n=200_000, seed=0) -> dict:
-    """Evaluate every design on the same simulated queries. Returns designs sorted by saving."""
+    """Evaluate every design on the same simulated queries. Returns designs sorted by saving.
+
+    rule_cost is relative to the small model: 0.01 means 1% of its compute per query.
+    """
     world = RoutingWorld(costs=tuple(costs), easy_fraction=easy, signal_noise=SIGNAL_NOISE[signal])
-    rule = RuleStage(coverage=min(rules, easy), accuracy=rule_accuracy, cost=rule_cost) if rules > 0 else None
+    rule = RuleStage(coverage=min(rules, easy), accuracy=rule_accuracy, cost=rule_cost * costs[0]) if rules > 0 else None
     designs = []
     for name, stages in MODEL_DESIGNS:
         for with_rule in ((False, True) if rule else (False,)):
@@ -59,7 +62,7 @@ def main() -> None:
                         help="share of all queries a deterministic first stage can answer (0-1)")
     parser.add_argument("--costs", type=float, nargs=3, default=(1.0, 8.0, 70.0),
                         metavar=("SMALL", "MEDIUM", "LARGE"), help="relative compute per query")
-    parser.add_argument("--signal", choices=sorted(SIGNAL_NOISE), default="good",
+    parser.add_argument("--signal", choices=list(SIGNAL_NOISE), default="good",
                         help="quality of the models' confidence signal")
     args = parser.parse_args()
     result = plan(args.easy, args.rules, args.costs, args.signal)
