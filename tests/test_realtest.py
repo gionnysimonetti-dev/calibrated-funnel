@@ -19,6 +19,14 @@ def test_read_answer_matches_the_category_name_and_its_probability():
     assert match_category("card payment", names) == -1                   # cut short, two candidates
     assert match_category("top up failed because of my bank", names) == 3
     assert read_answer({"response": "no idea", "logprobs": [{"token": "no", "logprob": -0.1}]}, names)[:2] == (-1, 0.0)
+    # a topic names its department without ambiguity
+    departments, topics = ["home", "utility", "work"], {"shopping list": 0, "find phone": 1, "insurance": 2,
+                                                        "insurance change": 2}
+    assert match_category("shopping list", departments, topics) == 0
+    assert match_category("Find phone.", departments, topics) == 1
+    assert match_category("insurance", departments, topics) == 2
+    assert match_category("billing", departments, topics) == -1
+    assert match_category("home", departments, topics) == 0
 
 
 def test_cascade_charges_only_the_stages_a_request_reaches():

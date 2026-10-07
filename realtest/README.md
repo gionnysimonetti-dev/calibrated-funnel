@@ -74,6 +74,8 @@ Short trials on 100 requests of `banking77`, on a PC with no graphics card. They
 - With names, the largest model is still right on fewer than 6 requests in 10. This workload is outside the zone where a cascade makes sense, which is why `departments` was added. `banking77` stays as the hard case.
 - Measured compute per request: 0.13, 0.25, 0.42 and 0.80 seconds from the smallest to the largest model, a ladder of 1 : 1.9 : 3.2 : 6.2.
 
+A trial on 100 requests of `departments`, names only: 39%, 53%, 65% and 80% from the smallest to the largest model, on a cost ladder of 1 : 1.7 : 3 : 6. Up to 20 answers in 100 were not recognised, because the model answered with the topic ("shopping list") instead of the department that handles it. A topic names its department without ambiguity, so such answers are now accepted; the analysis reads every answer again from the stored raw response.
+
 ## Limits
 
 - Two tasks, one model family, one machine: a first measurement, not a validation.

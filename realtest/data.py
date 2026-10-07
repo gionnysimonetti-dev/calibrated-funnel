@@ -43,6 +43,7 @@ class Task:
     noun: str              # what a category is called in the prompt
     categories: tuple      # names as shown to the model and expected back
     descriptions: tuple    # one per category, or empty strings
+    aliases: dict          # other answers that name a category without ambiguity -> category index
     train: tuple           # (text, category index): the labelled history
     test: tuple            # (text, category index): the workload
 
@@ -76,7 +77,7 @@ def load(task: str) -> Task:
 
         return Task(task, "customer requests to a bank, 77 categories (Banking77)",
                     "You classify customer requests sent to a bank.", "category",
-                    tuple(display(n) for n in names), ("",) * len(names), read("train.csv"), read("test.csv"))
+                    tuple(display(n) for n in names), ("",) * len(names), {}, read("train.csv"), read("test.csv"))
 
     domains = json.loads((folder / "domains.json").read_text(encoding="utf-8"))
     full = json.loads((folder / "data_full.json").read_text(encoding="utf-8"))
@@ -89,7 +90,8 @@ def load(task: str) -> Task:
     return Task(task, "requests to a virtual assistant, routed to 10 departments (CLINC150 domains)",
                 "You route requests sent to a virtual assistant to the department that handles them.", "department",
                 tuple(display(n) for n in names),
-                tuple(", ".join(display(i) for i in domains[n]) for n in names), read("train"), read("test"))
+                tuple(", ".join(display(i) for i in domains[n]) for n in names),
+                {display(intent): i for intent, i in department.items()}, read("train"), read("test"))
 
 
 def select(n_test: int, limit: int | None, seed: int = SEED) -> np.ndarray:
