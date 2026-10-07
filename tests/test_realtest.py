@@ -32,7 +32,7 @@ def test_cascade_charges_only_the_stages_a_request_reaches():
     ok, spent, where = cascade(correct, confidence, costs, (0, 1), 0.5, rule=(0.01, fired, np.ones(4, bool)))
     assert spent[0] == 0.01 and where.tolist() == [0, 1, 2, 2]
     # the cheapest threshold that keeps every answer right is the one that escalates the wrong one
-    assert choose_threshold(correct, confidence, costs, (0, 1), 1.0, [0.5, 0.95, 1.01]) == 0.95
+    assert choose_threshold(correct, confidence, costs, (0, 1), 1.0, [0.5, 0.95, 1.01])[0] == 0.95
 
 
 def test_auroc_and_lookup_behave():

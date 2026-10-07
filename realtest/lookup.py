@@ -86,10 +86,16 @@ def choose_similarity(score, agree, correct, min_accuracy: float = 0.99, grid=No
 
 
 def main() -> None:
-    """Measure the lookup stage alone on the whole test set. Needs no model."""
+    """Measure the lookup stage alone on both workloads. Needs no model."""
     from . import data
 
-    _, train, test = data.load()
+    for name in sorted(data.SOURCES):
+        task = data.load(name)
+        print(f"\n{task.title}")
+        _measure(task.train, task.test, data)
+
+
+def _measure(train, test, data) -> None:
     history = HistoryLookup([t for t, _ in train], [y for _, y in train])
     guess, score, agree = history.query([t for t, _ in test])
     correct = guess == np.array([y for _, y in test])
