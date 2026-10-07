@@ -5,18 +5,20 @@ import numpy as np
 
 from realtest.analyze import auroc, cascade, choose_threshold
 from realtest.lookup import HistoryLookup, choose_similarity
-from realtest.run_models import read_answer
+from realtest.run_models import match_category, read_answer
 
 
-def test_read_answer_parses_the_number_and_its_probability():
-    response = {"response": " 23", "logprobs": [{"token": " ", "logprob": math.log(0.9)},
-                                                {"token": "2", "logprob": math.log(0.8)},
-                                                {"token": "3", "logprob": math.log(0.5)},
-                                                {"token": ".", "logprob": math.log(0.1)}]}
-    answer, confidence = read_answer(response, 77)
-    assert answer == 22 and abs(confidence - 0.9 * 0.8 * 0.5) < 1e-9
-    assert read_answer({"response": "no idea", "logprobs": []}, 77) == (-1, 0.0)
-    assert read_answer({"response": "99", "logprobs": [{"token": "99", "logprob": 0.0}]}, 77) == (-1, 0.0)
+def test_read_answer_matches_the_category_name_and_its_probability():
+    names = ["card arrival", "card payment fee charged", "card payment wrong exchange rate", "top up failed"]
+    response = {"response": " Card arrival.", "logprobs": [{"token": " Card", "logprob": math.log(0.8)},
+                                                            {"token": " arrival", "logprob": math.log(0.5)},
+                                                            {"token": ".", "logprob": math.log(0.5)}]}
+    answer, confidence, logprobs = read_answer(response, names)
+    assert answer == 0 and abs(confidence - 0.8 * 0.5 * 0.5) < 1e-4 and len(logprobs) == 3
+    assert match_category("card_payment_wrong_exchange", names) == 2      # cut short, one candidate
+    assert match_category("card payment", names) == -1                   # cut short, two candidates
+    assert match_category("top up failed because of my bank", names) == 3
+    assert read_answer({"response": "no idea", "logprobs": [{"token": "no", "logprob": -0.1}]}, names)[:2] == (-1, 0.0)
 
 
 def test_cascade_charges_only_the_stages_a_request_reaches():
