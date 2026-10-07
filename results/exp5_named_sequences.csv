@@ -1,0 +1,8 @@
+sequence,candidates,named_sequence,equal_coefficients,generic_growth_1.4
+"Fibonacci 3, 5, 8",240,0.6372,0.625,0.639
+"Fibonacci 5, 8, 13",1040,0.7,0.6847,0.7255
+"Primes 3, 5, 7",210,0.6305,0.6233,0.6448
+"Primes 5, 7, 11",770,0.691,0.6723,0.7102
+"Powers of two 2, 4, 8",128,0.5918,0.6092,0.6223
+"Squares 4, 9, 16",1152,0.7113,0.689,0.717
+"Factorials 2, 6, 24",576,0.6145,0.6643,0.689

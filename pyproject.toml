@@ -1,0 +1,16 @@
+[project]
+name = "calibrated-funnel"
+version = "0.1.0"
+description = "Simulation toolkit for calibrated, confidence-gated model cascades and staged elimination"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Giovanni Simonetti" }]
+dependencies = ["numpy>=1.26", "scipy>=1.11"]
+
+[tool.setuptools]
+packages = ["funnel", "experiments"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
