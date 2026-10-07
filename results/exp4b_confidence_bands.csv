@@ -1,0 +1,11 @@
+confidence,band,declared,correct_among_finalists,correct_overall
+chi-square on the gap,1,0.065,0.3568,0.2475
+chi-square on the gap,2,0.2133,0.4377,0.3113
+chi-square on the gap,3,0.39,0.5427,0.3975
+chi-square on the gap,4,0.602,0.6783,0.5323
+chi-square on the gap,5,0.867,0.8688,0.7652
+posterior probability,1,0.3247,0.3262,0.2094
+posterior probability,2,0.4392,0.4488,0.3149
+posterior probability,3,0.5436,0.5466,0.4009
+posterior probability,4,0.6782,0.6862,0.5463
+posterior probability,5,0.8759,0.8667,0.7723

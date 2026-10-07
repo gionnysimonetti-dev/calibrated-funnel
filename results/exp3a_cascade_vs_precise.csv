@@ -1,0 +1,5 @@
+budget,precise_no_elimination,precise_three_stages,cascade_cheap_reliability_0.5,cascade_cheap_reliability_0.7,cascade_cheap_reliability_0.9
+0.25,0.0685,0.0583,0.2913,0.3688,0.4382
+1.0,0.137,0.2092,0.5473,0.689,0.7425
+2.0,0.246,0.4517,0.6035,0.7668,0.8243
+4.0,0.35,0.8655,0.646,0.8225,0.8858

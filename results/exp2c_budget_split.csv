@@ -1,0 +1,13 @@
+candidates,noise_sd,split,p_best
+100,1.0,equal,0.8795
+100,1.0,first stage heavy,0.8675
+100,1.0,first stage starved,0.8785
+100,3.0,equal,0.6117
+100,3.0,first stage heavy,0.593
+100,3.0,first stage starved,0.4923
+1000,1.0,equal,0.955
+1000,1.0,first stage heavy,0.944
+1000,1.0,first stage starved,0.928
+1000,3.0,equal,0.7128
+1000,3.0,first stage heavy,0.7433
+1000,3.0,first stage starved,0.4663

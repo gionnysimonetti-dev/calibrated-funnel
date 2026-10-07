@@ -1,0 +1,11 @@
+profile,easy_fraction,rule_coverage,signal,cost_ladder,best_design,saving: small > large,saving: small > medium > large,saving: rules > large model only,saving: rules > small > large,saving: rules > small > medium > large
+Ticket triage into a fixed taxonomy,0.8,0.3,good,wide,small > large,0.8129,0.8191,0.3008,0.8173,0.8234
+Ticket triage into a fixed taxonomy,0.8,0.3,good,narrow,rules > small > large,0.7169,0.6815,0.2982,0.7393,0.714
+Catalogue or spare-part matching,0.7,0.5,good,wide,small > large,0.719,0.7351,0.5005,0.7133,0.7074
+Catalogue or spare-part matching,0.7,0.5,good,narrow,rules > small > large,0.6227,0.5781,0.4989,0.6684,0.6063
+Sales assistant turns,0.6,0.1,weak,wide,rules > small > medium > large,0.3709,0.4584,0.0994,0.4106,0.4797
+Sales assistant turns,0.6,0.1,weak,narrow,rules > small > large,0.2854,0.2089,0.099,0.3327,0.2508
+Document field extraction,0.5,0.2,weak,wide,small > medium > large,0.327,0.3859,0.2003,0.367,0.3968
+Document field extraction,0.5,0.2,weak,narrow,rules > small > large,0.2315,0.1326,0.1982,0.2915,0.1713
+Open-ended analysis,0.1,0.0,weak,wide,small > large,0.0459,0.0268,,,
+Open-ended analysis,0.1,0.0,weak,narrow,large model only,-0.0359,-0.2913,,,
