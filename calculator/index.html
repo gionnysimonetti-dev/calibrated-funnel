@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Third Stage Calculator. A browser port of funnel/planner.py: same synthetic world, same calibration,
+     same recommendation rule. Self-contained: open this file in a browser, no install and no server.
+     Add #it or #en to the address to choose the language. -->
+<title>Third Stage Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a bench instrument. Controls on the left, reading on the right; one column on a phone.
+   Colour carries one meaning throughout: stages run from cool (cheap) to hot (expensive). */
+:root {
+  --bg: #ECF0EE; --surface: #FAFCFB; --ink: #15211D; --muted: #56655F; --line: #CFD8D4;
+  --accent: #0B6F62; --accent-soft: #D9ECE7; --loss: #B5391F;
+  --rules: #5F7583; --small: #1E9A8A; --medium: #D99A1C; --large: #CF4526;
+  --display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1514; --surface: #171F1D; --ink: #E4EBE8; --muted: #93A29D; --line: #2B3734;
+    --accent: #45C4B0; --accent-soft: #17332F; --loss: #F0785C;
+    --rules: #8FA5B2; --small: #3CC2AE; --medium: #EDB74A; --large: #F0694A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1514; --surface: #171F1D; --ink: #E4EBE8; --muted: #93A29D; --line: #2B3734;
+  --accent: #45C4B0; --accent-soft: #17332F; --loss: #F0785C;
+  --rules: #8FA5B2; --small: #3CC2AE; --medium: #EDB74A; --large: #F0694A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--body); margin: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 56px; display: grid; gap: 28px; }
+h1, h2, h3, p { margin: 0; }
+.eyebrow { font: 500 12px/1.3 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(30px, 5vw, 46px)/1.05 var(--display); letter-spacing: -.02em; text-wrap: balance; max-width: 18ch; }
+.lede { max-width: 62ch; color: var(--muted); font-size: 17px; }
+header { display: grid; gap: 12px; }
+.topline { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; flex: none; }
+.lang button { font: 600 12px/1 var(--mono); letter-spacing: .06em; color: var(--muted); background: transparent; border: 0; padding: 8px 11px; cursor: pointer; }
+.lang button + button { border-left: 1px solid var(--line); }
+.lang button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.bench { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 880px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px; display: grid; gap: 22px; min-width: 0; }
+h2 { font: 700 20px/1.2 var(--display); letter-spacing: -.01em; }
+h3 { font: 600 13px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.field { display: grid; gap: 8px; min-width: 0; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.field label, .field .label { font-weight: 600; }
+.readout { white-space: nowrap; font: 600 17px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--accent); }
+.hint { font-size: 13.5px; color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; height: 24px; }
+.costs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.costs span { display: block; font: 500 12px/1.3 var(--mono); color: var(--muted); margin-bottom: 4px; }
+.costs span i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+input[type="number"] { width: 100%; font: 500 16px/1 var(--mono); padding: 9px 10px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 13.5px/1 var(--body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg label { text-align: center; padding: 9px 6px; font-weight: 500; cursor: pointer; border-left: 1px solid var(--line); }
+.seg label:first-of-type { border-left: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input:checked + label { background: var(--accent-soft); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }
+.seg input:focus-visible + label, .chip:focus-visible, .lang button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.error { color: var(--loss); font-size: 13.5px; font-weight: 500; }
+
+.verdict { display: grid; gap: 14px; }
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stage { display: inline-flex; align-items: center; gap: 8px; font: 600 clamp(17px, 2.6vw, 22px)/1 var(--display); padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 4px; }
+.stage i, .legend i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.arrow { font: 500 18px/1 var(--mono); color: var(--muted); }
+.figures { display: flex; flex-wrap: wrap; gap: 8px 32px; align-items: baseline; }
+.big { font: 700 clamp(44px, 9vw, 68px)/.95 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--accent); }
+.big.loss { color: var(--loss); }
+.big-label { font-size: 15px; color: var(--muted); max-width: 26ch; }
+.flow { display: flex; height: 26px; border-radius: 3px; overflow: hidden; background: var(--line); gap: 2px; }
+.flow div { min-width: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend b { font: 600 14px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: minmax(0, 15em) minmax(60px, 1fr) 7.5em; gap: 12px; align-items: center; font-size: 14.5px; }
+@media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr) 7.5em; } .row .track { grid-column: 1 / -1; grid-row: 2; } }
+.row .name { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.row.pick .name { font-weight: 600; }
+.tag { display: inline-block; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 3px 5px; margin-left: 6px; vertical-align: 1px; }
+.track { position: relative; height: 16px; background: linear-gradient(var(--line), var(--line)) no-repeat; background-size: 100% 1px; background-position: 0 50%; }
+.track .bar { position: absolute; top: 2px; bottom: 2px; background: var(--accent); opacity: .45; border-radius: 1px; }
+.row.pick .bar { opacity: 1; }
+.track .bar.neg { background: var(--loss); }
+.track .zero { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); }
+.val { font: 500 14px/1.2 var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.val small { color: var(--muted); font-size: 12px; }
+.thumb { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 12px; }
+.thumb ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.thumb li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 12px; padding: 9px 12px; border: 1px solid transparent; border-radius: 4px; color: var(--muted); }
+.thumb li b { font: 500 13.5px/1.5 var(--mono); }
+.thumb li.on { color: var(--ink); background: var(--accent-soft); border-color: var(--accent); }
+@media (max-width: 560px) { .thumb li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 40px; border-top: 1px solid var(--line); padding-top: 24px; font-size: 14.5px; color: var(--muted); }
+.notes div { display: grid; gap: 8px; align-content: start; }
+.notes ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+footer { font: 400 12.5px/1.5 var(--mono); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="topline">
+      <p class="eyebrow" data-t="eyebrow">Model cascades on local hardware · simulation</p>
+      <div class="lang" role="group" aria-label="Language / Lingua">
+        <button type="button" id="lang-en" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" id="lang-it" data-lang="it" aria-pressed="false">IT</button>
+      </div>
+    </div>
+    <h1 data-t="title">Does your cascade need a third stage?</h1>
+    <p class="lede" data-t="lede">A small model answers first and a query moves up only when its calibrated confidence is too low. Enter four numbers about your workload and see which design saves the most compute at the accuracy of the large model alone.</p>
+  </header>
+
+  <div class="bench">
+    <section class="panel" id="panel-in" aria-label="Your workload">
+      <h2 data-t="workload">Your workload</h2>
+
+      <div class="field">
+        <span class="label" data-t="examples">Start from an example</span>
+        <div class="chips" id="presets"></div>
+        <p class="hint" data-t="examplesHint">Example profiles are illustrative, not measurements.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-head"><label for="easy" data-t="easy">Easy queries</label><output class="readout" id="easy-out" for="easy"></output></div>
+        <input type="range" id="easy" min="0" max="100" step="5" value="60">
+        <p class="hint" data-t="easyHint">The share your smallest model gets right with high confidence.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-head"><label for="rules" data-t="rules">Answered by rules</label><output class="readout" id="rules-out" for="rules"></output></div>
+        <input type="range" id="rules" min="0" max="100" step="5" value="10">
+        <p class="hint" data-t="rulesHint">Exact codes, lookups, fixed business rules. Counted inside the easy share.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-head"><span class="label" data-t="costs">Compute per query</span><output class="readout" id="step-out"></output></div>
+        <div class="costs">
+          <label><span><i style="background:var(--small)"></i><em data-t="small" style="font-style:normal">small</em></span><input type="number" id="cost-small" min="0.01" step="any" value="1" inputmode="decimal"></label>
+          <label><span><i style="background:var(--medium)"></i><em data-t="medium" style="font-style:normal">medium</em></span><input type="number" id="cost-medium" min="0.01" step="any" value="3" inputmode="decimal"></label>
+          <label><span><i style="background:var(--large)"></i><em data-t="large" style="font-style:normal">large</em></span><input type="number" id="cost-large" min="0.01" step="any" value="9" inputmode="decimal"></label>
+        </div>
+        <div class="chips" id="ladders"></div>
+        <p class="hint" id="cost-hint">Any unit, measured on your hardware. Only the ratios matter. The step is the average ratio between neighbouring models.</p>
+      </div>
+
+      <div class="field">
+        <div class="field-head"><span class="label" data-t="signal">Confidence signal</span><output class="readout" id="auroc-out"></output></div>
+        <div class="seg" role="radiogroup" id="signal-group" aria-label="Confidence signal">
+          <input type="radio" name="signal" id="sig-good" value="good"><label for="sig-good" data-t="good">Good</label>
+          <input type="radio" name="signal" id="sig-medium" value="medium"><label for="sig-medium" data-t="mediumSignal">Medium</label>
+          <input type="radio" name="signal" id="sig-weak" value="weak" checked><label for="sig-weak" data-t="weak">Weak</label>
+        </div>
+        <p class="hint" data-t="signalHint">How well the small model's confidence separates its right answers from its wrong ones. The figure is the AUROC this setting gives in the simulation: compare it with yours.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-out" aria-live="polite" aria-label="Result">
+      <div class="verdict">
+        <h3 id="verdict-label">Simplest design within 2 points of the best</h3>
+        <div class="chain" id="chain"></div>
+        <div class="figures">
+          <div class="big" id="saving"></div>
+          <p class="big-label" id="saving-label"></p>
+        </div>
+      </div>
+
+      <div class="field" id="flow-block">
+        <h3 data-t="flow">Where queries stop</h3>
+        <div class="flow" id="flow" role="img"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="field">
+        <h3 data-t="all">Every design, compute saved against the large model alone</h3>
+        <div class="rows" id="rows"></div>
+        <p class="hint" data-t="allHint">In brackets: accuracy difference in points. Every design is held within half a point of the large model.</p>
+      </div>
+
+      <div class="thumb">
+        <h3 data-t="ruleTitle">The 5x rule of thumb</h3>
+        <ul id="thumb">
+          <li data-case="rules"><b data-t="caseRulesWhen">Step under 5x</b><span data-t="caseRulesThen">The third stage is rules, not a model. A middle model costs more than it saves.</span></li>
+          <li data-case="middle"><b data-t="caseMiddleWhen">5x or more, weak signal</b><span data-t="caseMiddleThen">A middle model pays for itself. Rules still help if they cover enough queries.</span></li>
+          <li data-case="none"><b data-t="caseNoneWhen">5x or more, clear signal</b><span data-t="caseNoneThen">Two models are enough.</span></li>
+        </ul>
+        <p class="hint" id="thumb-note"></p>
+      </div>
+    </section>
+  </div>
+
+  <section class="notes">
+    <div>
+      <h3 data-t="whatTitle">What this is</h3>
+      <p data-t="what1">A simulation on 100,000 synthetic queries, run in your browser. Difficulty, model ability and the confidence signal follow simple Gaussian assumptions. The threshold is chosen on one sample and the result is read on another.</p>
+      <p data-t="what2">It tells you which designs are worth measuring. It is not a forecast for a real system.</p>
+    </div>
+    <div>
+      <h3 data-t="fourTitle">Four numbers to measure first</h3>
+      <ol>
+        <li data-t="four1">Run the smallest model on a sample with known answers: the share it gets right with high confidence.</li>
+        <li data-t="four2">The share of queries a deterministic step can answer outright.</li>
+        <li data-t="four3">Compute per query for each model you can run.</li>
+        <li data-t="four4">The AUROC of the small model's confidence against right and wrong answers.</li>
+      </ol>
+    </div>
+    <div>
+      <h3 data-t="limitsTitle">What the saving does not cover</h3>
+      <p data-t="limits">Compute, energy and latency go down. Memory does not: every model in the cascade stays loaded. The rule stage is idealised: 99.5% accurate on what it answers, at 1% of the small model's cost.</p>
+    </div>
+  </section>
+
+  <footer data-t="footer">Calibrated Funnel Inference · simulation only, no real model was run · Giovanni Simonetti</footer>
+</div>
+
+<script>
+/* Cascade planner core: a JavaScript port of funnel/routing.py and funnel/planner.py.
+   Same synthetic world, same calibration by quantile bins, same threshold choice,
+   same "simplest design within 2 points of the best" recommendation. */
+const Planner = (() => {
+  const N = 100000;            // queries per sample (calibration and test)
+  const BINS = 200;
+  const ABILITY = [1.0, 1.8, 2.4];
+  const NOISE = { good: 0.5, medium: 1.0, weak: 1.5 };
+  const NEVER = 1.01;
+  const THRESHOLDS = [0.80, 0.85, 0.90, 0.93, 0.95, 0.97, 0.98, 0.99, 0.995, NEVER];
+  const TOLERANCE = 0.005, MIN_SAVING = 0.02, NEAR_BEST = 0.02;
+  const RULE_ACCURACY = 0.995, RULE_COST = 0.01;
+  const DESIGNS = [
+    { name: "large model only", stages: [2] },
+    { name: "small > large", stages: [0, 2] },
+    { name: "small > medium > large", stages: [0, 1, 2] },
+  ];
+
+  function mulberry32(a) {
+    return () => {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* Base random draws, made once and reused for every input, so that moving a
+     slider changes the workload and not the dice. */
+  let base = null;
+  function draws() {
+    if (base) return base;
+    const rnd = mulberry32(20261007);
+    const normal = () => {
+      let u = 0; while (u === 0) u = rnd();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
+    };
+    const fill = (f) => { const a = new Float32Array(N); for (let i = 0; i < N; i++) a[i] = f(); return a; };
+    const one = () => ({
+      uEasy: fill(rnd), zDiff: fill(normal),
+      eps: [fill(normal), fill(normal), fill(normal)],
+      zSig: [fill(normal), fill(normal), fill(normal)],
+      uFire: fill(rnd), uRuleOk: fill(rnd),
+    });
+    base = { cal: one(), test: one() };
+    return base;
+  }
+
+  function sample(d, easy, noise, coverage) {
+    const easyFlag = new Uint8Array(N), fired = new Uint8Array(N), ruleOk = new Uint8Array(N);
+    const correct = [new Uint8Array(N), new Uint8Array(N), new Uint8Array(N)];
+    const signal = [new Float32Array(N), new Float32Array(N), new Float32Array(N)];
+    const rate = easy > 0 ? Math.min(1, coverage / easy) : 0;
+    for (let i = 0; i < N; i++) {
+      const isEasy = d.uEasy[i] < easy;
+      const diff = isEasy ? -2.5 + 0.5 * d.zDiff[i] : 1.0 + 1.0 * d.zDiff[i];
+      easyFlag[i] = isEasy ? 1 : 0;
+      fired[i] = isEasy && d.uFire[i] < rate ? 1 : 0;
+      ruleOk[i] = d.uRuleOk[i] < RULE_ACCURACY ? 1 : 0;
+      for (let f = 0; f < 3; f++) {
+        const margin = ABILITY[f] - diff;
+        correct[f][i] = margin + d.eps[f][i] > 0 ? 1 : 0;
+        signal[f][i] = margin + noise * d.zSig[f][i];
+      }
+    }
+    return { correct, signal, fired, ruleOk };
+  }
+
+  function lowerBound(edges, x) {           // number of edges strictly below x
+    let lo = 0, hi = edges.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (edges[m] < x) lo = m + 1; else hi = m; }
+    return lo;
+  }
+
+  function calibrate(sigCal, okCal) {
+    const sorted = Float32Array.from(sigCal).sort();
+    const edges = new Float32Array(BINS - 1);
+    for (let k = 1; k < BINS; k++) {
+      const pos = (k / BINS) * (N - 1), i = Math.floor(pos), frac = pos - i;
+      edges[k - 1] = sorted[i] + frac * (sorted[Math.min(i + 1, N - 1)] - sorted[i]);
+    }
+    const hits = new Float64Array(BINS), count = new Float64Array(BINS);
+    for (let i = 0; i < N; i++) { const b = lowerBound(edges, sigCal[i]); hits[b] += okCal[i]; count[b]++; }
+    const acc = new Float64Array(BINS);
+    for (let b = 0; b < BINS; b++) acc[b] = hits[b] / Math.max(count[b], 1);
+    // how well the raw signal separates right from wrong answers (area under the ROC curve)
+    let pos = 0, neg = 0, area = 0;
+    for (let b = 0; b < BINS; b++) {
+      const p = hits[b], n = count[b] - hits[b];
+      area += n * (pos + 0.5 * p); pos += p; neg += n;   // pairs where the wrong answer scored higher
+    }
+    const auroc = pos > 0 && neg > 0 ? 1 - area / (pos * neg) : NaN;
+    const predict = (sig) => { const out = new Float32Array(N); for (let i = 0; i < N; i++) out[i] = acc[lowerBound(edges, sig[i])]; return out; };
+    return { predict, auroc };
+  }
+
+  function cascade(s, conf, costs, stages, threshold, withRule) {
+    let ok = 0, spent = 0;
+    const shares = new Float64Array(stages.length + (withRule ? 1 : 0));
+    const off = withRule ? 1 : 0, last = stages.length - 1;
+    for (let i = 0; i < N; i++) {
+      if (withRule) {
+        spent += RULE_COST * costs[0];   // 1% of the small model's cost
+        if (s.fired[i]) { ok += s.ruleOk[i]; shares[0]++; continue; }
+      }
+      for (let j = 0; j <= last; j++) {
+        const f = stages[j];
+        spent += costs[f];
+        if (j === last || conf[f][i] >= threshold) { ok += s.correct[f][i]; shares[off + j]++; break; }
+      }
+    }
+    return { accuracy: ok / N, cost: spent / N, shares: Array.from(shares, (v) => v / N) };
+  }
+
+  function mean(a) { let t = 0; for (let i = 0; i < a.length; i++) t += a[i]; return t / a.length; }
+
+  /* easy, rules: shares in 0..1; costs: [small, medium, large]; signal: good | medium | weak */
+  function plan({ easy, rules, costs, signal }) {
+    const d = draws();
+    const coverage = Math.min(rules, easy);
+    const cal = sample(d.cal, easy, NOISE[signal], coverage);
+    const test = sample(d.test, easy, NOISE[signal], coverage);
+    const confCal = [], confTest = [], auroc = [];
+    for (let f = 0; f < 3; f++) {
+      const c = calibrate(cal.signal[f], cal.correct[f]);
+      confCal.push(c.predict(cal.signal[f])); confTest.push(c.predict(test.signal[f])); auroc.push(c.auroc);
+    }
+    const bigCal = mean(cal.correct[2]), bigTest = mean(test.correct[2]);
+    const designs = [];
+    for (const dsg of DESIGNS) {
+      for (const withRule of coverage > 0 ? [false, true] : [false]) {
+        if (!withRule && dsg.stages.length === 1) continue;
+        let best = null;
+        for (const th of THRESHOLDS) {
+          const r = cascade(cal, confCal, costs, dsg.stages, th, withRule);
+          if (r.accuracy >= bigCal - TOLERANCE && (!best || r.cost < best.cost)) best = { th, cost: r.cost };
+          if (dsg.stages.length === 1) break;        // no threshold to choose
+        }
+        const threshold = best ? best.th : NEVER;
+        const r = cascade(test, confTest, costs, dsg.stages, threshold, withRule);
+        designs.push({
+          design: (withRule ? "rules > " : "") + dsg.name,
+          stages: (withRule ? ["rules"] : []).concat(dsg.stages.map((f) => ["small", "medium", "large"][f])),
+          models: dsg.stages.length, rule: withRule, threshold,
+          saving: 1 - r.cost / costs[2], accuracyDelta: r.accuracy - bigTest, shares: r.shares,
+        });
+      }
+    }
+    designs.sort((a, b) => b.saving - a.saving);
+    const largeOnly = { design: "large model only", stages: ["large"], models: 1, rule: false, threshold: NEVER,
+                        saving: 0, accuracyDelta: 0, shares: [1] };
+    let recommended = largeOnly;
+    if (designs[0].saving >= MIN_SAVING) {
+      const near = designs.filter((x) => x.saving >= designs[0].saving - NEAR_BEST);
+      near.sort((a, b) => a.models - b.models || a.rule - b.rule || b.saving - a.saving);
+      recommended = near[0];
+    }
+    return { recommended, designs, largeOnly, auroc: auroc[0], largeAccuracy: bigTest, n: N };
+  }
+
+  return { plan, NEAR_BEST };
+})();
+
+</script>
+<script>
+(() => {
+  const TEXT = {
+    en: {
+      eyebrow: "Model cascades on local hardware · simulation",
+      title: "Does your cascade need a third stage?",
+      lede: "A small model answers first and a query moves up only when its calibrated confidence is too low. Enter four numbers about your workload and see which design saves the most compute at the accuracy of the large model alone.",
+      workload: "Your workload", result: "Result",
+      examples: "Start from an example", examplesHint: "Example profiles are illustrative, not measurements.",
+      presets: ["Ticket triage", "Catalogue matching", "Assistant turns", "Document extraction", "Open-ended analysis"],
+      easy: "Easy queries", easyHint: "The share your smallest model gets right with high confidence.",
+      rules: "Answered by rules", rulesHint: "Exact codes, lookups, fixed business rules. Counted inside the easy share.",
+      costs: "Compute per query", small: "small", medium: "medium", large: "large", rulesStage: "rules",
+      ladders: ["Close 1 : 3 : 9", "Medium 1 : 5 : 25", "Wide 1 : 8 : 70"],
+      costHint: "Any unit, measured on your hardware. Only the ratios matter. The step is the average ratio between neighbouring models.",
+      costError: "Enter three positive costs that increase from small to large.",
+      step: (x) => "step " + x + "x",
+      signal: "Confidence signal", good: "Good", mediumSignal: "Medium", weak: "Weak",
+      signalHint: "How well the small model's confidence separates its right answers from its wrong ones. The figure is the AUROC this setting gives in the simulation: compare it with yours.",
+      verdict: "Simplest design within 2 points of the best", verdictNone: "No cascade pays off here",
+      largeOnly: "large model only",
+      saved: (p) => "of compute saved against the large model alone, with accuracy " + p + " points",
+      savedNone: "saved. Run the large model alone: no design saves 2% or more.",
+      flow: "Where queries stop",
+      all: "Every design, compute saved against the large model alone",
+      allHint: "In brackets: accuracy difference in points. Every design is held within half a point of the large model.",
+      pick: "pick",
+      ruleTitle: "The 5x rule of thumb",
+      caseRulesWhen: "Step under 5x", caseRulesThen: "The third stage is rules, not a model. A middle model costs more than it saves.",
+      caseMiddleWhen: "5x or more, weak signal", caseMiddleThen: "A middle model pays for itself. Rules still help if they cover enough queries.",
+      caseNoneWhen: "5x or more, clear signal", caseNoneThen: "Two models are enough.",
+      noteNone: "With this few easy queries the rule does not apply: no cascade is worth building.",
+      noteAgree: (x) => "Your average step is " + x + "x. The simulation agrees with the rule for this workload.",
+      noteDisagree: (x) => "Your average step is " + x + "x. The simulation disagrees with the rule here: it is a rule of thumb, drawn from simulated workloads, and this is one of its edges.",
+      whatTitle: "What this is",
+      what1: "A simulation on 100,000 synthetic queries, run in your browser. Difficulty, model ability and the confidence signal follow simple Gaussian assumptions. The threshold is chosen on one sample and the result is read on another.",
+      what2: "It tells you which designs are worth measuring. It is not a forecast for a real system.",
+      fourTitle: "Four numbers to measure first",
+      four1: "Run the smallest model on a sample with known answers: the share it gets right with high confidence.",
+      four2: "The share of queries a deterministic step can answer outright.",
+      four3: "Compute per query for each model you can run.",
+      four4: "The AUROC of the small model's confidence against right and wrong answers.",
+      limitsTitle: "What the saving does not cover",
+      limits: "Compute, energy and latency go down. Memory does not: every model in the cascade stays loaded. The rule stage is idealised: 99.5% accurate on what it answers, at 1% of the small model's cost.",
+      footer: "Calibrated Funnel Inference · simulation only, no real model was run · Giovanni Simonetti",
+    },
+    it: {
+      eyebrow: "Cascate di modelli in locale · simulazione",
+      title: "Alla tua cascata serve un terzo stadio?",
+      lede: "Risponde prima un modello piccolo e la richiesta sale solo quando la sua fiducia tarata è troppo bassa. Inserisci quattro numeri sul tuo carico di lavoro e scopri quale progetto risparmia più calcolo, con l'accuratezza del solo modello grande.",
+      workload: "Il tuo carico di lavoro", result: "Risultato",
+      examples: "Parti da un esempio", examplesHint: "I profili di esempio sono illustrativi, non misure.",
+      presets: ["Smistamento ticket", "Ricerca a catalogo", "Turni di un assistente", "Estrazione da documenti", "Analisi aperta"],
+      easy: "Richieste facili", easyHint: "La quota che il modello più piccolo risolve bene con fiducia alta.",
+      rules: "Risolte da regole", rulesHint: "Codici esatti, ricerche in tabella, regole fisse. Contate dentro la quota facile.",
+      costs: "Calcolo per richiesta", small: "piccolo", medium: "medio", large: "grande", rulesStage: "regole",
+      ladders: ["Vicini 1 : 3 : 9", "Medi 1 : 5 : 25", "Lontani 1 : 8 : 70"],
+      costHint: "Qualsiasi unità, misurata sul tuo hardware. Contano solo i rapporti. Il passo è il rapporto medio fra modelli vicini.",
+      costError: "Inserisci tre costi positivi, crescenti dal piccolo al grande.",
+      step: (x) => "passo " + x + "x",
+      signal: "Segnale di fiducia", good: "Buono", mediumSignal: "Medio", weak: "Debole",
+      signalHint: "Quanto bene la fiducia del modello piccolo separa le risposte giuste da quelle sbagliate. Il numero è l'AUROC che questa impostazione dà nella simulazione: confrontalo con il tuo.",
+      verdict: "Il progetto più semplice entro 2 punti dal migliore", verdictNone: "Qui nessuna cascata conviene",
+      largeOnly: "solo il modello grande",
+      saved: (p) => "di calcolo risparmiato rispetto al solo modello grande, con accuratezza " + p + " punti",
+      savedNone: "risparmiato. Usa solo il modello grande: nessun progetto risparmia almeno il 2%.",
+      flow: "Dove si fermano le richieste",
+      all: "Tutti i progetti: calcolo risparmiato rispetto al solo modello grande",
+      allHint: "Fra parentesi: differenza di accuratezza in punti. Ogni progetto resta entro mezzo punto dal modello grande.",
+      pick: "scelto",
+      ruleTitle: "La regola del 5x",
+      caseRulesWhen: "Passo sotto 5x", caseRulesThen: "Il terzo stadio sono le regole, non un modello. Un modello intermedio costa più di quanto fa risparmiare.",
+      caseMiddleWhen: "Da 5x in su, segnale debole", caseMiddleThen: "Un modello intermedio si ripaga. Le regole aiutano ancora se coprono abbastanza richieste.",
+      caseNoneWhen: "Da 5x in su, segnale chiaro", caseNoneThen: "Bastano due modelli.",
+      noteNone: "Con così poche richieste facili la regola non si applica: nessuna cascata vale la costruzione.",
+      noteAgree: (x) => "Il tuo passo medio è " + x + "x. Per questo carico la simulazione conferma la regola.",
+      noteDisagree: (x) => "Il tuo passo medio è " + x + "x. Qui la simulazione non conferma la regola: è una regola pratica, ricavata da carichi simulati, e questo è uno dei suoi bordi.",
+      whatTitle: "Che cos'è",
+      what1: "Una simulazione su 100.000 richieste sintetiche, eseguita nel tuo browser. Difficoltà, capacità dei modelli e segnale di fiducia seguono ipotesi gaussiane semplici. La soglia si sceglie su un campione e il risultato si legge su un altro.",
+      what2: "Indica quali progetti vale la pena misurare. Non è una previsione per un sistema reale.",
+      fourTitle: "Quattro numeri da misurare prima",
+      four1: "Fai girare il modello più piccolo su un campione con risposte note: la quota che risolve bene con fiducia alta.",
+      four2: "La quota di richieste che un passaggio deterministico può risolvere da solo.",
+      four3: "Il calcolo per richiesta di ogni modello che puoi usare.",
+      four4: "L'AUROC della fiducia del modello piccolo rispetto a risposte giuste e sbagliate.",
+      limitsTitle: "Cosa il risparmio non copre",
+      limits: "Scendono calcolo, energia e latenza. La memoria no: ogni modello della cascata resta caricato. Lo stadio a regole è idealizzato: accurato al 99,5% su ciò che risolve, all'1% del costo del modello piccolo.",
+      footer: "Calibrated Funnel Inference · solo simulazione, nessun modello reale è stato eseguito · Giovanni Simonetti",
+    },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const COLOR = { rules: "var(--rules)", small: "var(--small)", medium: "var(--medium)", large: "var(--large)" };
+  const PRESETS = [
+    { easy: 80, rules: 30, signal: "good" }, { easy: 70, rules: 50, signal: "good" },
+    { easy: 60, rules: 10, signal: "weak" }, { easy: 50, rules: 20, signal: "weak" },
+    { easy: 10, rules: 0, signal: "weak" },
+  ];
+  const LADDERS = [{ costs: [1, 3, 9] }, { costs: [1, 5, 25] }, { costs: [1, 8, 70] }];
+
+  // Language: #it or #en in the link wins, then the last choice, then the browser.
+  let lang = "en";
+  try {
+    const hash = location.hash.replace("#", ""), saved = localStorage.getItem("lang");
+    lang = TEXT[hash] ? hash : TEXT[saved] ? saved : (navigator.language || "").toLowerCase().startsWith("it") ? "it" : "en";
+  } catch (e) { /* storage unavailable: keep English */ }
+  let T = TEXT[lang];
+
+  const num = (v, digits) => v.toFixed(digits).replace(".", lang === "it" ? "," : ".");
+  const pct = (v) => (v < 0 ? "−" : "") + Math.abs(Math.round(v * 100)) + "%";
+  const pts = (v) => { const r = Math.round(v * 1000) / 10; return (r < 0 ? "−" : r > 0 ? "+" : "") + num(Math.abs(r), 1); };
+  const stageName = (st) => (st === "rules" ? T.rulesStage : T[st]);
+  const designName = (d) => (d.stages.length === 1 ? T.largeOnly : d.stages.map(stageName).join(" → "));
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const dot = (stage) => { const i = el("i"); i.style.background = COLOR[stage]; return i; };
+
+  function chips(host, items, apply) {
+    items.forEach((it) => {
+      const b = el("button", "chip"); b.type = "button"; b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => { apply(it); update(); });
+      host.append(b); it.button = b;
+    });
+  }
+  chips($("presets"), PRESETS, (p) => {
+    $("easy").value = p.easy; $("rules").value = p.rules; $("sig-" + p.signal).checked = true;
+  });
+  chips($("ladders"), LADDERS, (l) => {
+    $("cost-small").value = l.costs[0]; $("cost-medium").value = l.costs[1]; $("cost-large").value = l.costs[2];
+  });
+
+  function setLanguage(next) {
+    lang = next; T = TEXT[lang];
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-t]").forEach((n) => { n.textContent = T[n.dataset.t]; });
+    PRESETS.forEach((p, i) => { p.button.textContent = T.presets[i]; });
+    LADDERS.forEach((l, i) => { l.button.textContent = T.ladders[i]; });
+    $("panel-in").setAttribute("aria-label", T.workload);
+    $("panel-out").setAttribute("aria-label", T.result);
+    $("signal-group").setAttribute("aria-label", T.signal);
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    update();
+  }
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+    try { localStorage.setItem("lang", b.dataset.lang); } catch (e) { /* not remembered */ }
+    setLanguage(b.dataset.lang);
+  }));
+
+  function read() {
+    const easy = +$("easy").value;
+    if (+$("rules").value > easy) $("rules").value = easy;
+    const costs = ["cost-small", "cost-medium", "cost-large"].map((id) => parseFloat($(id).value));
+    return { easy, rules: +$("rules").value, costs, signal: document.querySelector('input[name="signal"]:checked').value };
+  }
+
+  function update() {
+    const s = read();
+    $("easy-out").textContent = s.easy + "%";
+    $("rules-out").textContent = s.rules + "%";
+    PRESETS.forEach((p) => p.button.setAttribute("aria-pressed", String(p.easy === s.easy && p.rules === s.rules && p.signal === s.signal)));
+    LADDERS.forEach((l) => l.button.setAttribute("aria-pressed", String(l.costs.every((c, i) => c === s.costs[i]))));
+    const valid = s.costs.every((c) => Number.isFinite(c) && c > 0) && s.costs[0] < s.costs[1] && s.costs[1] < s.costs[2];
+    const hint = $("cost-hint");
+    hint.className = valid ? "hint" : "error";
+    hint.textContent = valid ? T.costHint : T.costError;
+    if (!valid) { $("step-out").textContent = ""; return; }
+    const step = Math.sqrt(s.costs[2] / s.costs[0]);
+    $("step-out").textContent = T.step(num(step, 1));
+    clearTimeout(update.timer);
+    update.timer = setTimeout(() => render(s, step), 60);
+  }
+
+  function render(s, step) {
+    const r = Planner.plan({ easy: s.easy / 100, rules: s.rules / 100, costs: s.costs, signal: s.signal });
+    const pick = r.recommended, cascadeWorthIt = pick.models > 1 || pick.rule;
+    $("auroc-out").textContent = Number.isFinite(r.auroc) ? "AUROC " + num(r.auroc, 2) : "";
+
+    $("verdict-label").textContent = cascadeWorthIt ? T.verdict : T.verdictNone;
+    const chain = $("chain"); chain.replaceChildren();
+    pick.stages.forEach((st, i) => {
+      if (i) chain.append(el("span", "arrow", "→"));
+      const box = el("span", "stage"); box.append(dot(st), document.createTextNode(stageName(st))); chain.append(box);
+    });
+    $("saving").textContent = pct(pick.saving);
+    $("saving").className = "big" + (pick.saving < 0 ? " loss" : "");
+    $("saving-label").textContent = cascadeWorthIt ? T.saved(pts(pick.accuracyDelta)) : T.savedNone;
+
+    $("flow-block").hidden = !cascadeWorthIt;
+    const flow = $("flow"), legend = $("legend"); flow.replaceChildren(); legend.replaceChildren();
+    pick.stages.forEach((st, i) => {
+      const seg = el("div"); seg.style.background = COLOR[st]; seg.style.flex = Math.max(pick.shares[i], 0.0001) + " 1 0"; flow.append(seg);
+      const item = el("span"); item.append(dot(st), document.createTextNode(stageName(st) + " "), el("b", null, pct(pick.shares[i]))); legend.append(item);
+    });
+    flow.setAttribute("aria-label", pick.stages.map((st, i) => stageName(st) + " " + pct(pick.shares[i])).join(", "));
+
+    const all = r.designs.concat(cascadeWorthIt ? [] : [r.largeOnly]).sort((a, b) => b.saving - a.saving);
+    const lo = Math.max(-0.5, Math.min(0, ...all.map((d) => d.saving))), span = 1 - lo;
+    const rows = $("rows"); rows.replaceChildren();
+    all.forEach((d) => {
+      const row = el("div", "row" + (d.design === pick.design ? " pick" : ""));
+      const name = el("div", "name", designName(d));
+      if (d.design === pick.design) name.append(el("span", "tag", T.pick));
+      const track = el("div", "track"), bar = el("div", "bar" + (d.saving < 0 ? " neg" : ""));
+      const v = Math.max(lo, Math.min(1, d.saving)), zero = (0 - lo) / span;
+      bar.style.left = (100 * Math.min(zero, (v - lo) / span)) + "%";
+      bar.style.width = (100 * Math.abs(v) / span) + "%";
+      const z = el("div", "zero"); z.style.left = (100 * zero) + "%";
+      track.append(bar, z);
+      const val = el("div", "val", pct(d.saving) + " ");
+      val.append(el("small", null, "(" + pts(d.accuracyDelta) + ")"));
+      row.append(name, track, val); rows.append(row);
+    });
+
+    const expect = step < 5 ? "rules" : s.signal === "weak" ? "middle" : "none";
+    document.querySelectorAll("#thumb li").forEach((li) => li.classList.toggle("on", li.dataset.case === expect));
+    const agrees = (expect === "middle") === (pick.models === 3);
+    $("thumb-note").textContent = !cascadeWorthIt ? T.noteNone : agrees ? T.noteAgree(num(step, 1)) : T.noteDisagree(num(step, 1));
+  }
+
+  document.querySelectorAll("input").forEach((i) => i.addEventListener("input", update));
+  setLanguage(lang);
+})();
+</script>
+</body>
+</html>

@@ -8,14 +8,14 @@ import numpy
 import scipy
 
 from . import (exp1_routing_savings, exp2_staged_selection, exp3_multifidelity, exp4_confidence,
-               exp5_named_sequences, exp6_third_stage_value, exp7_workload_profiles)
+               exp5_named_sequences, exp6_third_stage_value, exp7_workload_profiles, exp8_five_x_rule)
 from .common import BASE_SEED, RESULTS
 
 
 def main() -> None:
     sections = []
     for module in (exp1_routing_savings, exp2_staged_selection, exp3_multifidelity, exp4_confidence,
-                   exp5_named_sequences, exp6_third_stage_value, exp7_workload_profiles):
+                   exp5_named_sequences, exp6_third_stage_value, exp7_workload_profiles, exp8_five_x_rule):
         start = time.time()
         sections.append(module.run())
         print(f"{module.__name__}: {time.time() - start:.0f}s")

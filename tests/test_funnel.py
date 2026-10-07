@@ -83,3 +83,12 @@ def test_planner_prefers_no_cascade_when_few_queries_are_easy():
     assert out["recommended"] == "large model only"
     out = plan(easy=0.9, rules=0.0, costs=(1.0, 8.0, 70.0), signal="good", n=60_000, seed=7)
     assert out["recommended"] == "small > large" and out["designs"][0]["saving"] > 0.8
+
+
+def test_planner_accepts_a_medium_signal_and_ignores_the_cost_unit():
+    from funnel.planner import plan
+    base = plan(easy=0.6, rules=0.1, costs=(1.0, 3.0, 9.0), signal="medium", n=60_000, seed=7)
+    scaled = plan(easy=0.6, rules=0.1, costs=(10.0, 30.0, 90.0), signal="medium", n=60_000, seed=7)
+    assert base["recommended"] == scaled["recommended"]
+    for a, b in zip(base["designs"], scaled["designs"]):
+        assert a["design"] == b["design"] and abs(a["saving"] - b["saving"]) < 1e-9

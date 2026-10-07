@@ -22,6 +22,8 @@ In these simulations the right third stage depends on the workload:
 | Models far apart in cost, good confidence signal | None | Two stages already capture the saving; a third adds 2 points at most |
 | Few easy queries | No cascade | The large model alone is as cheap or cheaper |
 
+The general form is the 5x rule in the [README](../README.md): under a 5x cost ratio between neighbouring models the third stage is rules, not a model.
+
 ## Ticket triage into a fixed taxonomy
 
 Classifying or reclassifying service-desk tickets into a closed set of categories.
