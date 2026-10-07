@@ -8,6 +8,8 @@ In una cascata risponde prima un modello piccolo, e la richiesta sale a un model
 
 **Stato: solo simulazione.** Ogni numero qui viene da dati sintetici. Nessun modello reale è stato ancora eseguito. Il protocollo per i modelli reali è in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), e chi vuole aiutare a eseguirlo è benvenuto.
 
+**Paper (bozza).** [La regola del 5x: come scegliere il terzo stadio di una cascata di modelli governata dalla fiducia](paper/paper.it.pdf), anche [in inglese](paper/paper.pdf).
+
 ## La risposta breve: la regola del 5x (simulata)
 
 Si prende il rapporto di costo fra modelli vicini: dal piccolo al medio, dal medio al grande.
@@ -178,6 +180,7 @@ funnel/confidence.py    pesi di covarianza, fiducia chi quadro, test di taratura
 experiments/            uno script per esperimento, più run_all
 results/                RESULTS.md e un CSV per tabella
 docs/                   metodo, casi d'uso, protocollo per modelli reali, questioni aperte
+paper/                  rapporto tecnico, in italiano e in inglese, con le figure
 tests/                  test unitari
 ```
 
@@ -196,10 +199,10 @@ Cascate e instradamento di modelli:
 - Chen, Zaharia, Zou. [FrugalGPT](https://arxiv.org/abs/2305.05176), 2023.
 - Kotte. [UCCI: Calibrated Uncertainty for Cost-Optimal LLM Cascade Routing](https://arxiv.org/abs/2605.18796), 2026. Due modelli serviti in locale, taratura isotonica, riduzione dei costi del 31%.
 - Dou, Lian, Li. [Conformal Cascade: Distribution-Free Accuracy Guarantees for Multi-Tier LLM Inference](https://arxiv.org/abs/2607.25018), 2026. Schema a più livelli con garanzie formali di accuratezza, valutato con due livelli su modelli a pesi aperti, riduzione dei costi del 43%.
-- [CARGO: A Framework for Confidence-Aware Routing of Large Language Models](https://arxiv.org/abs/2509.14899), 2025.
-- [Learning to Route LLMs with Confidence Tokens](https://arxiv.org/abs/2410.13284), 2024.
-- [When Models Know When They Do Not Know: Calibration, Cascading, and Cleaning](https://arxiv.org/abs/2601.07965), 2026.
-- AutoMix: Automatically Mixing Language Models, 2023.
+- Barrak, Fourati, Olchawa, Ksontini, Zoghlami. [CARGO: A Framework for Confidence-Aware Routing of Large Language Models](https://arxiv.org/abs/2509.14899), 2025.
+- Chuang, Sarma, Gopalan, Boccio, Bolouki, Hu, Zhou. [Learning to Route LLMs with Confidence Tokens](https://arxiv.org/abs/2410.13284), 2024.
+- Hao, Lu, Ishiwaka, Li, Wan, Chen. [When Models Know When They Do Not Know: Calibration, Cascading, and Cleaning](https://arxiv.org/abs/2601.07965), 2026.
+- Aggarwal, Madaan, et al. [AutoMix: Automatically Mixing Language Models](https://arxiv.org/abs/2310.12963), 2023.
 
 Eliminazione a stadi con budget fisso:
 
