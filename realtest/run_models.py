@@ -74,30 +74,38 @@ def call(host: str, path: str, payload: dict | None = None, timeout: float = 180
         return json.loads(response.read().decode())
 
 
-def match_category(text: str, names) -> int:
-    """Index of the category the model named, or -1 if the answer names none of them."""
+def match_category(text: str, names, aliases=None) -> int:
+    """Index of the category the model named, or -1 if the answer names none of them.
+
+    `aliases` are other answers that identify a category without ambiguity: for the
+    departments workload, the topics each department handles. A model that answers
+    "shopping list" has routed the request to the department that handles shopping lists.
+    """
     answer = data.display(text.strip().splitlines()[0]) if text.strip() else ""
     if not answer:
         return -1
-    if answer in names:
-        return names.index(answer)
-    complete = [n for n in names if answer.startswith(n)]       # the answer goes on after a full name
+    known = {name: i for i, name in enumerate(names)}
+    for alias, i in (aliases or {}).items():
+        known.setdefault(alias, i)
+    if answer in known:
+        return known[answer]
+    complete = [k for k in known if answer.startswith(k + " ")]      # the answer goes on after a full name
     if complete:
-        return names.index(max(complete, key=len))
-    cut_short = [n for n in names if n.startswith(answer)]      # the answer stops before the end of a name
+        return known[max(complete, key=len)]
+    cut_short = {known[k] for k in known if k.startswith(answer)}   # the answer stops before the end of a name
     if len(cut_short) == 1:
-        return names.index(cut_short[0])
-    close = difflib.get_close_matches(answer, names, n=1, cutoff=0.85)
-    return names.index(close[0]) if close else -1
+        return cut_short.pop()
+    close = difflib.get_close_matches(answer, list(known), n=1, cutoff=0.85)
+    return known[close[0]] if close else -1
 
 
-def read_answer(response: dict, names):
+def read_answer(response: dict, names, aliases=None):
     """Returns (category index or -1, confidence in 0..1, log probabilities of the answer's tokens).
 
     The confidence is the probability the model gave to its whole answer: the product of the
     probabilities of its tokens. It is a raw signal, calibrated later on outcomes.
     """
-    answer = match_category(response.get("response", ""), names)
+    answer = match_category(response.get("response", ""), names, aliases)
     logprobs = []
     for token in response.get("logprobs") or []:
         if "\n" in token["token"] and logprobs:
@@ -162,7 +170,7 @@ def run(task_name, models, limit, host, shots) -> None:
                 text, label = test[item]
                 tick = time.time()
                 response = classify(host, model, system, user_prompt(text, task.noun), context)
-                answer, confidence, logprobs = read_answer(response, names)
+                answer, confidence, logprobs = read_answer(response, names, task.aliases)
                 seconds = (response.get("prompt_eval_duration", 0) + response.get("eval_duration", 0)) / 1e9
                 correct += answer == label
                 unreadable += answer < 0

@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import math
 import pathlib
 import time
 
@@ -28,7 +29,7 @@ from funnel.routing import NEVER, BinnedCalibrator
 
 from . import data
 from .lookup import HistoryLookup
-from .run_models import DEFAULT_SHOTS, OUTPUTS, variant
+from .run_models import DEFAULT_SHOTS, OUTPUTS, match_category, variant
 
 HERE = pathlib.Path(__file__).resolve().parent
 RULE_THRESHOLD = 5.0
@@ -36,14 +37,22 @@ SIMILARITIES = tuple(np.round(np.arange(0.30, 0.9001, 0.05), 2)) + (2.0,)     # 
 BOOTSTRAP = 2000
 
 
-def load_outputs(task: str, shots: int):
-    """Returns {model: {item: row}} for one workload and prompt variant."""
+def load_outputs(task, shots: int):
+    """Returns {model: {item: row}} for one workload and prompt variant.
+
+    The answer is read again from the stored raw response, so a better reading of the
+    answers never requires running the models again.
+    """
     rows = {}
-    for path in sorted((OUTPUTS / task / variant(shots)).glob("*.jsonl")):
+    names = list(task.categories)
+    for path in sorted((OUTPUTS / task.name / variant(shots)).glob("*.jsonl")):
         by_item = {}
         for line in path.read_text(encoding="utf-8").splitlines():
             if line:
                 row = json.loads(line)
+                row["answer"] = match_category(row["response"], names, task.aliases)
+                row["correct"] = row["answer"] == row["label"]
+                row["confidence"] = math.exp(sum(row["token_logprobs"])) if row["answer"] >= 0 else 0.0
                 by_item[row["item"]] = row
         if by_item:
             rows[next(iter(by_item.values()))["model"]] = by_item
@@ -122,7 +131,7 @@ def table(header, rows):
 def analyze(task_name="banking77", shots=DEFAULT_SHOTS, tolerance=0.005, n_bins=15, seed=data.SEED) -> str:
     task = data.load(task_name)
     train, test = task.train, task.test
-    outputs = load_outputs(task_name, shots)
+    outputs = load_outputs(task, shots)
     if len(outputs) < 2:
         raise SystemExit(f"Need the stored outputs of at least two models in {OUTPUTS / task_name / variant(shots)}. "
                          f"Run: python -m realtest.run_models --task {task_name} --shots {shots}")
