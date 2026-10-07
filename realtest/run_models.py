@@ -1,7 +1,7 @@
 """Step 1 of the real-model test: run every model once on every request and store everything.
 
-Each model, served locally by Ollama, classifies each customer request into one of 77
-categories by answering with the category name. For every request the script stores the
+Each model, served locally by Ollama, classifies each request of a workload by answering
+with the name of the category (see data.py for the two workloads). For every request the script stores the
 answer, whether it is correct, a raw confidence signal (the probability the model gave to
 the tokens of its answer) and the measured compute time. Nothing is decided here: every
 cascade design is evaluated later, offline, from these stored outputs (see analyze.py).
@@ -9,9 +9,9 @@ cascade design is evaluated later, offline, from these stored outputs (see analy
 The run can be interrupted and restarted: requests already stored are skipped.
 
 Usage:
-    python -m realtest.run_models
-    python -m realtest.run_models --limit 100           # a short trial on a fixed subset
-    python -m realtest.run_models --shots 0             # category names only, no example requests
+    python -m realtest.run_models --task departments
+    python -m realtest.run_models --task banking77 --shots 3
+    python -m realtest.run_models --task departments --limit 100     # a short trial on a fixed subset
 """
 from __future__ import annotations
 
@@ -37,11 +37,6 @@ def variant(shots: int) -> str:
     return f"names-{shots}shot"
 
 
-def display(name: str) -> str:
-    """Category name as shown to the model and as expected back: 'card_arrival' -> 'card arrival'."""
-    return re.sub(r"[^a-z0-9]+", " ", name.lower()).strip()
-
-
 def pick_examples(train, n_categories: int, shots: int):
     """For each category, `shots` past requests chosen by a fixed rule: short, typical ones."""
     by_category = [[] for _ in range(n_categories)]
@@ -55,17 +50,20 @@ def pick_examples(train, n_categories: int, shots: int):
     return examples
 
 
-def system_prompt(categories, examples) -> str:
+def system_prompt(task, examples) -> str:
     lines = []
-    for name, shown in zip(categories, examples):
-        lines.append(f"- {display(name)}" + (": " + " | ".join(f'"{t}"' for t in shown) if shown else ""))
-    head = "Categories, each with example requests:" if examples and examples[0] else "Categories:"
-    return ("You classify customer requests sent to a bank. Reply with the name of the single best matching "
-            "category, exactly as written in the list, and nothing else.\n\n" + head + "\n" + "\n".join(lines))
+    for name, description, shown in zip(task.categories, task.descriptions, examples):
+        line = f"- {name}" + (f": {description}" if description else "")
+        if shown:
+            line += (". Examples: " if description else ": ") + " | ".join(f'"{t}"' for t in shown)
+        lines.append(line)
+    plural = "categories" if task.noun == "category" else task.noun + "s"
+    return (f"{task.instruction} Reply with the name of the single best matching {task.noun}, exactly as written "
+            f"in the list, and nothing else.\n\n{plural.capitalize()}:\n" + "\n".join(lines))
 
 
-def user_prompt(text: str) -> str:
-    return f"Request: {text}\nCategory:"
+def user_prompt(text: str, noun: str) -> str:
+    return f"Request: {text}\n{noun.capitalize()}:"
 
 
 def call(host: str, path: str, payload: dict | None = None, timeout: float = 1800.0) -> dict:
@@ -78,7 +76,7 @@ def call(host: str, path: str, payload: dict | None = None, timeout: float = 180
 
 def match_category(text: str, names) -> int:
     """Index of the category the model named, or -1 if the answer names none of them."""
-    answer = display(text.strip().splitlines()[0]) if text.strip() else ""
+    answer = data.display(text.strip().splitlines()[0]) if text.strip() else ""
     if not answer:
         return -1
     if answer in names:
@@ -109,9 +107,9 @@ def read_answer(response: dict, names):
     return answer, confidence, logprobs
 
 
-def classify(host: str, model: str, system: str, text: str, context: int) -> dict:
+def classify(host: str, model: str, system: str, prompt: str, context: int) -> dict:
     return call(host, "/api/generate", {
-        "model": model, "system": system, "prompt": user_prompt(text), "stream": False,
+        "model": model, "system": system, "prompt": prompt, "stream": False,
         "logprobs": True, "top_logprobs": 3, "keep_alive": "30m",
         "options": {"temperature": 0, "seed": 1, "num_predict": 20, "num_ctx": context, "stop": ["\n"]},
     })
@@ -129,20 +127,22 @@ def check(host: str, models) -> None:
     print(f"Ollama {version}, models found: {', '.join(models)}")
 
 
-def output_path(model: str, shots: int) -> pathlib.Path:
-    return OUTPUTS / variant(shots) / (re.sub(r"[^A-Za-z0-9.]+", "_", model) + ".jsonl")
+def output_path(task: str, model: str, shots: int) -> pathlib.Path:
+    return OUTPUTS / task / variant(shots) / (re.sub(r"[^A-Za-z0-9.]+", "_", model) + ".jsonl")
 
 
-def run(models, limit, host, shots) -> None:
-    categories, train, test = data.load()
+def run(task_name, models, limit, host, shots) -> None:
+    task = data.load(task_name)
+    test = task.test
     items = data.select(len(test), limit)
-    names = [display(c) for c in categories]
-    system = system_prompt(categories, pick_examples(train, len(categories), shots))
+    names = list(task.categories)
+    system = system_prompt(task, pick_examples(task.train, len(names), shots))
     context = next(size for size in (2048, 4096, 8192, 16384) if size >= len(system) / 3 + 400)
     check(host, models)
+    print(f"workload: {task.title}")
     print(f"prompt variant: {variant(shots)}, about {len(system) // 4} tokens of instructions, read once per model")
     for model in models:
-        path = output_path(model, shots)
+        path = output_path(task_name, model, shots)
         path.parent.mkdir(parents=True, exist_ok=True)
         done = set()
         if path.exists():
@@ -152,7 +152,7 @@ def run(models, limit, host, shots) -> None:
         if not todo:
             continue
         print("  loading the model and reading the category list...", flush=True)
-        probe = classify(host, model, system, test[todo[0]][0], context)     # also fills the prompt cache
+        probe = classify(host, model, system, user_prompt(test[todo[0]][0], task.noun), context)     # also fills the prompt cache
         if not probe.get("logprobs"):
             raise SystemExit("This Ollama version does not return token probabilities (logprobs). "
                              "Update Ollama to the latest version and run again.")
@@ -161,7 +161,7 @@ def run(models, limit, host, shots) -> None:
             for count, item in enumerate(todo, start=1):
                 text, label = test[item]
                 tick = time.time()
-                response = classify(host, model, system, text, context)
+                response = classify(host, model, system, user_prompt(text, task.noun), context)
                 answer, confidence, logprobs = read_answer(response, names)
                 seconds = (response.get("prompt_eval_duration", 0) + response.get("eval_duration", 0)) / 1e9
                 correct += answer == label
@@ -181,18 +181,19 @@ def run(models, limit, host, shots) -> None:
                     print(f"  {count}/{len(todo)}  accuracy {correct / count:.0%}  unreadable answers {unreadable}  "
                           f"compute {compute / count:.2f}s per request  about {pace * (len(todo) - count) / 60:.0f} min left",
                           flush=True)
-    print(f"\nDone. Next: python -m realtest.analyze --shots {shots}")
+    print(f"\nDone. Next: python -m realtest.analyze --task {task_name} --shots {shots}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--task", choices=sorted(data.SOURCES), default="banking77", help="which workload to run")
     parser.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS), help="Ollama model names, any order")
-    parser.add_argument("--limit", type=int, default=None, help="number of requests (default: all 3080 of the test set)")
+    parser.add_argument("--limit", type=int, default=None, help="number of requests (default: the whole test set)")
     parser.add_argument("--shots", type=int, default=DEFAULT_SHOTS,
                         help="example requests shown to the models for each category (default 1; 0 for none)")
     parser.add_argument("--host", default="http://127.0.0.1:11434")
     args = parser.parse_args()
-    run(args.models, args.limit, args.host, args.shots)
+    run(args.task, args.models, args.limit, args.host, args.shots)
 
 
 if __name__ == "__main__":

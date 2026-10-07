@@ -1,6 +1,6 @@
 """Step 2 of the real-model test: evaluate every cascade design offline.
 
-Reads the outputs stored by run_models.py and writes realtest/REPORT.md.
+Reads the outputs stored by run_models.py and writes realtest/REPORT_<task>.md.
 
 Method, the same as in the simulations:
 - the requests are split once, with a fixed seed, into a calibration half and a test half;
@@ -11,7 +11,7 @@ Method, the same as in the simulations:
 - every reported figure comes from the test half, with bootstrap confidence intervals.
 
 Usage:
-    python -m realtest.analyze
+    python -m realtest.analyze --task departments
 """
 from __future__ import annotations
 
@@ -27,18 +27,19 @@ from funnel.confidence import calibration_chi2
 from funnel.routing import NEVER, BinnedCalibrator
 
 from . import data
-from .lookup import HistoryLookup, choose_similarity
+from .lookup import HistoryLookup
 from .run_models import DEFAULT_SHOTS, OUTPUTS, variant
 
-REPORT = pathlib.Path(__file__).resolve().parent / "REPORT.md"
+HERE = pathlib.Path(__file__).resolve().parent
 RULE_THRESHOLD = 5.0
+SIMILARITIES = tuple(np.round(np.arange(0.30, 0.9001, 0.05), 2)) + (2.0,)     # 2.0 = the lookup never answers
 BOOTSTRAP = 2000
 
 
-def load_outputs(shots: int):
-    """Returns {model: {item: row}} for one prompt variant."""
+def load_outputs(task: str, shots: int):
+    """Returns {model: {item: row}} for one workload and prompt variant."""
     rows = {}
-    for path in sorted((OUTPUTS / variant(shots)).glob("*.jsonl")):
+    for path in sorted((OUTPUTS / task / variant(shots)).glob("*.jsonl")):
         by_item = {}
         for line in path.read_text(encoding="utf-8").splitlines():
             if line:
@@ -96,7 +97,7 @@ def choose_threshold(correct, confidence, costs, stages, target, grid, rule=None
         ok, spent, _ = cascade(correct, confidence, costs, stages, threshold, rule)
         if ok.mean() >= target and spent.mean() < best[1]:
             best = (float(threshold), float(spent.mean()))
-    return best[0]
+    return best
 
 
 def interval(values):
@@ -118,12 +119,13 @@ def table(header, rows):
     return "\n".join(lines)
 
 
-def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=15, seed=data.SEED) -> str:
-    categories, train, test = data.load()
-    outputs = load_outputs(shots)
+def analyze(task_name="banking77", shots=DEFAULT_SHOTS, tolerance=0.005, n_bins=15, seed=data.SEED) -> str:
+    task = data.load(task_name)
+    train, test = task.train, task.test
+    outputs = load_outputs(task_name, shots)
     if len(outputs) < 2:
-        raise SystemExit(f"Need the stored outputs of at least two models in {OUTPUTS / variant(shots)}. "
-                         f"Run: python -m realtest.run_models --shots {shots}")
+        raise SystemExit(f"Need the stored outputs of at least two models in {OUTPUTS / task_name / variant(shots)}. "
+                         f"Run: python -m realtest.run_models --task {task_name} --shots {shots}")
     common = sorted(set.intersection(*(set(rows) for rows in outputs.values())))
     order = [int(i) for i in data.select(len(test), None) if int(i) in set(common)]
     n = len(order)
@@ -145,8 +147,9 @@ def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=1
     guess, score, agree = history.query([test[i][0] for i in order])
     lookup_cost = (time.perf_counter() - tick) / n
     lookup_correct = guess == labels
-    similarity = choose_similarity(score[calibration], agree[calibration], lookup_correct[calibration], lookup_accuracy)
-    fired = agree & (score >= similarity)
+
+    def fired_at(similarity):
+        return agree & (score >= similarity)
 
     # calibrated confidence
     confidence = np.zeros_like(signal)
@@ -159,12 +162,18 @@ def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=1
         """Thresholds on the calibration half; per-request outcomes on the test half."""
         large = stages[-1]
         target = correct[large][calibration].mean() - tolerance
-        cal_rule = (lookup_cost, fired[calibration], lookup_correct[calibration]) if with_lookup else None
-        threshold = choose_threshold(correct[:, calibration], confidence[:, calibration], costs, stages, target,
-                                     grid, cal_rule)
-        test_rule = (lookup_cost, fired[held_out], lookup_correct[held_out]) if with_lookup else None
-        ok, spent, where = cascade(correct[:, held_out], confidence[:, held_out], costs, stages, threshold, test_rule)
-        return {"threshold": threshold, "ok": ok, "spent": spent, "where": where}
+        best = None
+        for similarity in (SIMILARITIES if with_lookup else (None,)):
+            rule = None if similarity is None else (lookup_cost, fired_at(similarity)[calibration],
+                                                    lookup_correct[calibration])
+            threshold, cost = choose_threshold(correct[:, calibration], confidence[:, calibration], costs, stages,
+                                               target, grid, rule)
+            if best is None or cost < best[2]:
+                best = (similarity, threshold, cost)
+        similarity, threshold, _ = best
+        rule = None if similarity is None else (lookup_cost, fired_at(similarity)[held_out], lookup_correct[held_out])
+        ok, spent, where = cascade(correct[:, held_out], confidence[:, held_out], costs, stages, threshold, rule)
+        return {"threshold": threshold, "similarity": similarity, "ok": ok, "spent": spent, "where": where}
 
     n_test = int(held_out.sum())
     resamples = rng.integers(0, n_test, size=(BOOTSTRAP, n_test))
@@ -185,14 +194,14 @@ def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=1
         return float(diff.mean()), *interval(diff[resamples].mean(axis=1))
 
     out = ["# Real-model test: report", "",
-           f"Workload: {n} customer requests from the Banking77 test set, 77 categories. "
+           f"Workload: {task.title}. {n} requests. "
            f"Calibration half {int(calibration.sum())}, test half {n_test}. Every figure below is measured on "
            "the test half; intervals are 95% bootstrap intervals.", "",
-           "The models answer with the name of the category. "
-           + (f"They are shown the list of categories with {shots} example request{'s' if shots > 1 else ''} each, "
-              "taken from the history." if shots else "They are shown the list of categories and no examples."), "",
-           f"This file is generated by `python -m realtest.analyze --shots {shots}` from the stored outputs in "
-           f"`realtest/outputs/{variant(shots)}/`.", ""]
+           f"The models answer with the name of the {task.noun}. "
+           + (f"They are shown the list with {shots} example request{'s' if shots > 1 else ''} for each, "
+              "taken from the history." if shots else "They are shown the list and no example requests."), "",
+           f"This file is generated by `python -m realtest.analyze --task {task_name} --shots {shots}` from the "
+           f"stored outputs in `realtest/outputs/{task_name}/{variant(shots)}/`.", ""]
 
     # 1. the models
     out += ["## The models", ""]
@@ -202,22 +211,23 @@ def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=1
                      f"{auroc(signal[f][held_out], correct[f][held_out]):.2f}"])
     out += [table(["Model", "Accuracy alone", "Seconds per request", "Cost against the smallest",
                    "AUROC of the confidence signal"], rows), "",
-            "Seconds per request are compute time reported by the server, with the list of categories "
+            "Seconds per request are compute time reported by the server, with the instructions "
             "cached between requests.", ""]
 
     # 2. the lookup stage
     out += ["## The deterministic lookup stage", ""]
-    if similarity > 1:
-        out += [f"No similarity threshold reached {fmt_pct(lookup_accuracy)} accuracy on the calibration half: "
-                "the stage never fires.", ""]
-    else:
-        f_test = fired[held_out]
-        out += [f"It answers when the five closest past requests agree and the closest has similarity of at least "
-                f"{similarity:.2f} (chosen on the calibration half for {fmt_pct(lookup_accuracy)} accuracy).", "",
-                f"- Coverage on the test half: **{fmt_pct(f_test.mean())}** of requests",
-                f"- Accuracy on what it answers: **{100 * lookup_correct[held_out][f_test].mean():.1f}%**",
-                f"- Cost: {1000 * lookup_cost:.2f} ms per request, {lookup_cost / costs[0]:.4f} of the smallest model",
-                "", "The simulation assumed 99.5% accuracy and a coverage chosen by hand.", ""]
+    out += ["It answers when the five closest past requests agree and the closest is similar enough. How much it "
+            "answers, and how well, at different similarity thresholds, on the test half:", ""]
+    rows = []
+    for similarity in (0.3, 0.4, 0.5, 0.6, 0.7):
+        f_test = fired_at(similarity)[held_out]
+        accuracy = f"{100 * lookup_correct[held_out][f_test].mean():.1f}%" if f_test.any() else "n/a"
+        rows.append([f"{similarity:.1f}", fmt_pct(f_test.mean()), accuracy])
+    out += [table(["Similarity of at least", "Requests answered", "Accuracy on what it answers"], rows), "",
+            f"Cost: {1000 * lookup_cost:.2f} ms per request, {lookup_cost / costs[0]:.4f} of the smallest model.", "",
+            "Each design that uses the stage picks its similarity threshold on the calibration half, together with "
+            "the confidence threshold, so that the whole cascade stays within the tolerance. The simulation "
+            "assumed a stage 99.5% accurate, with a coverage chosen by hand.", ""]
 
     # 3. every design, against the largest model alone
     large = len(names) - 1
@@ -291,8 +301,9 @@ def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=1
             "## Limits of this run", "",
             "- One task, one model family, one machine. It is a first measurement, not a validation.",
             ("- The models see one or a few example requests per category; " if shots else
-             "- The models classify without examples; ") + "the lookup stage uses all 10,003 labelled past requests.",
-            "- Costs are measured with the category list cached between requests, as a server would run it.",
+             "- The models classify without example requests; ")
+            + f"the lookup stage uses all {len(train):,} labelled past requests.",
+            "- Costs are measured with the instructions cached between requests, as a server would run it.",
             "- Thresholds are chosen on the calibration half. On the test half a design can end up more than "
             "half a point below the large model: check the accuracy column before comparing savings.",
             f"- With {n_test} test requests, differences of a few points are within noise: read the intervals.", ""]
@@ -301,14 +312,15 @@ def analyze(shots=DEFAULT_SHOTS, tolerance=0.005, lookup_accuracy=0.99, n_bins=1
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--task", choices=sorted(data.SOURCES), default="banking77", help="which workload to analyse")
     parser.add_argument("--shots", type=int, default=DEFAULT_SHOTS, help="which prompt variant to analyse")
     parser.add_argument("--tolerance", type=float, default=0.005, help="accuracy allowed below the largest model")
-    parser.add_argument("--lookup-accuracy", type=float, default=0.99, help="accuracy required of the lookup stage")
     args = parser.parse_args()
-    report = analyze(args.shots, args.tolerance, args.lookup_accuracy)
-    REPORT.write_text(report, encoding="utf-8")
+    report = analyze(args.task, args.shots, args.tolerance)
+    target = HERE / f"REPORT_{args.task}.md"
+    target.write_text(report, encoding="utf-8")
     print(report)
-    print(f"\nwritten {REPORT}")
+    print(f"\nwritten {target}")
 
 
 if __name__ == "__main__":
