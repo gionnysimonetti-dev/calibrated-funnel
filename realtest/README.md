@@ -2,7 +2,7 @@
 
 A first, minimal run of the [real-model protocol](../docs/REAL_MODEL_PROTOCOL.md), sized for an office PC with no graphics card.
 
-**Status: the kit is ready; only short trials have been run so far.** Full results will be stored here as `REPORT_<workload>.md`.
+**Status: one full run, on the `departments` workload: [REPORT_departments.md](REPORT_departments.md).** The `banking77` workload has had only short trials.
 
 ## What it tests
 

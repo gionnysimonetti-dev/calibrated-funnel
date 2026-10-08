@@ -1,16 +1,38 @@
 # Calibrated Funnel Inference
 
-**When is a third stage worth it?** A reproducible toolkit for planning model cascades on local hardware, one use case at a time.
+**History before models.** In ticket classification most of the work is memory, not intelligence. A measured test and a reproducible toolkit for model cascades on local hardware.
 
 *Leggi in italiano: [README.it.md](README.it.md)*
 
-In a cascade, a small model answers first and a query moves up to a larger model only when a calibrated confidence stays below a threshold. Published work shows this saves compute with two tiers. This repository asks the next practical question: for a given workload, should there be a third stage, and what should it be: a middle model, a deterministic rule stage, or nothing?
+## The measured result
 
-**Status: simulation only.** Every number here comes from synthetic data. No real model has been run yet. The protocol for real models is in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), and help running it is welcome.
+4,500 real user requests, routed to 10 departments, with a history of 15,000 requests already labelled. Four open models of one family, from 0.5 to 7.6 billion parameters, run locally on an office PC with no graphics card. A deterministic stage looks the request up in the history and answers only when the five closest past requests agree; everything else goes to a model.
 
-**Paper (draft).** [The 5x Rule: Choosing the Third Stage of a Confidence-Gated Model Cascade](paper/paper.pdf), also [in Italian](paper/paper.it.pdf).
+Per 100 requests, measured on a held-out half:
 
-## The short answer: the 5x rule (simulated)
+| Way of working | Who answers | Right answers | Compute |
+| --- | --- | --- | --- |
+| Large model alone (7.6B) | large model: 100 | 87 | 100 |
+| History, then small model (1.5B) | history: 63, small model: 37 | about 87 | 11 |
+| History, then large model | history: 63, large model: 37 | 92 | 37 |
+
+- The history alone answers 63 requests in 100, 98.7% of them right, at a negligible cost.
+- History plus a small model matches the large model with a ninth of the compute: accuracy difference +0.5 points, 95% interval -1.2 to +2.1.
+- Cascades of models alone, small first and large when unsure, cost 15% to 74% more than the large model alone. The models' confidence separates right from wrong answers poorly (AUROC 0.71 to 0.77), so almost everything climbs to the large model anyway.
+
+Full report: [realtest/REPORT_departments.md](realtest/REPORT_departments.md). Every model answer is stored in [realtest/outputs/](realtest/outputs/); the test runs again with one command ([realtest/README.md](realtest/README.md)).
+
+**Limits.** One task, one model family, one machine. The data are requests to an assistant, not service-desk tickets. The models see no examples, while the history holds 15,000 labelled requests: that is the point, but it is not a contest between equals. No frontier model was tested.
+
+## Background
+
+In a cascade, a small model answers first and a query moves up to a larger model only when a calibrated confidence stays below a threshold. Published work shows this saves compute with two tiers. This repository started from the next practical question: should there be a third stage, and what should it be: a middle model, a deterministic rule stage, or nothing? The simulations below gave a rule of thumb; the real test above is the first measurement against it.
+
+**Status.** One real-model test; everything else is simulated. The protocol for further real-model runs is in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), and help running it is welcome.
+
+**Paper (draft, written before the real test and being revised).** [The 5x Rule](paper/paper.pdf), also [in Italian](paper/paper.it.pdf).
+
+## The 5x rule (simulated)
 
 Take the cost ratio between neighbouring models: small to medium, medium to large.
 
@@ -26,6 +48,8 @@ The best third stage is often not a model. A deterministic rule stage (exact cod
 This is a rule of thumb drawn from simulated workloads (experiment 8), and its edges are soft: at 3x to 4x, with a weak signal and mostly easy queries, a middle model already gains up to 4 points. It is the claim this repository most wants tested on real models.
 
 The saving itself is set by the workload, not by the method: the share of easy queries and the cost ratio between models decide most of it.
+
+The real test is consistent with the lower branch of the rule: on four model triples, all under 5x, a middle model clearly lost compute in three, and the lookup stage clearly gained in all four. It went further than the simulation predicted: even two-model cascades lost. No triple reached 5x, so the upper branch is untested.
 
 ## Plan your own workload
 

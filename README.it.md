@@ -1,16 +1,38 @@
 # Calibrated Funnel Inference
 
-**Quando conviene un terzo stadio?** Uno strumento riproducibile per progettare cascate di modelli su hardware locale, un caso d'uso alla volta.
+**Lo storico prima del modello.** Nella classificazione dei ticket la maggior parte del lavoro è memoria, non intelligenza. Un test misurato e uno strumento riproducibile per le cascate di modelli su hardware locale.
 
 *Read in English: [README.md](README.md)*
 
-In una cascata risponde prima un modello piccolo, e la richiesta sale a un modello più grande solo quando una fiducia tarata resta sotto una soglia. I lavori pubblicati mostrano che con due livelli si risparmia calcolo. Questo repository si pone la domanda pratica successiva: per un dato carico di lavoro serve un terzo stadio? E quale: un modello intermedio, uno stadio di regole deterministiche, o nessuno?
+## Il risultato misurato
 
-**Stato: solo simulazione.** Ogni numero qui viene da dati sintetici. Nessun modello reale è stato ancora eseguito. Il protocollo per i modelli reali è in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), e chi vuole aiutare a eseguirlo è benvenuto.
+4.500 richieste reali di utenti, da smistare verso 10 reparti, con uno storico di 15.000 richieste già classificate. Quattro modelli aperti della stessa famiglia, da 0,5 a 7,6 miliardi di parametri, eseguiti in locale su un PC da ufficio senza scheda grafica. Uno stadio deterministico cerca la richiesta nello storico e risponde solo quando le cinque richieste passate più simili concordano; tutto il resto passa a un modello.
 
-**Paper (bozza).** [La regola del 5x: come scegliere il terzo stadio di una cascata di modelli governata dalla fiducia](paper/paper.it.pdf), anche [in inglese](paper/paper.pdf).
+Su 100 richieste, misurato su una metà tenuta da parte:
 
-## La risposta breve: la regola del 5x (simulata)
+| Modo di lavorare | Chi risponde | Risposte giuste | Calcolo |
+| --- | --- | --- | --- |
+| Solo modello grande (7,6 mld) | modello grande: 100 | 87 | 100 |
+| Storico, poi modello piccolo (1,5 mld) | storico: 63, modello piccolo: 37 | circa 87 | 11 |
+| Storico, poi modello grande | storico: 63, modello grande: 37 | 92 | 37 |
+
+- Lo storico da solo risolve 63 richieste su 100, il 98,7% correttamente, a un costo trascurabile.
+- Storico più modello piccolo pareggia il modello grande con un nono del calcolo: differenza di accuratezza +0,5 punti, intervallo al 95% da -1,2 a +2,1.
+- Le cascate di soli modelli, prima il piccolo e poi il grande quando il piccolo non è sicuro, costano dal 15% al 74% in più del modello grande da solo. La fiducia dei modelli distingue male le risposte giuste da quelle sbagliate (AUROC fra 0,71 e 0,77), quindi quasi tutto sale comunque al modello grande.
+
+Rapporto completo: [realtest/REPORT_departments.md](realtest/REPORT_departments.md). Ogni risposta dei modelli è salvata in [realtest/outputs/](realtest/outputs/); il test si ripete con un comando ([realtest/README.md](realtest/README.md)).
+
+**Limiti.** Un solo compito, una sola famiglia di modelli, una sola macchina. I dati sono richieste a un assistente, non ticket di un service desk. I modelli lavorano senza esempi, mentre lo storico contiene 15.000 richieste classificate: è proprio il punto, ma non è un confronto alla pari. Nessun modello di frontiera è stato provato.
+
+## Contesto
+
+In una cascata risponde prima un modello piccolo, e la richiesta sale a un modello più grande solo quando una fiducia tarata resta sotto una soglia. I lavori pubblicati mostrano che con due livelli si risparmia calcolo. Questo repository è partito dalla domanda pratica successiva: serve un terzo stadio, e quale: un modello intermedio, uno stadio di regole deterministiche, o nessuno? Le simulazioni qui sotto hanno dato una regola pratica; il test reale qui sopra è la prima misura a confronto.
+
+**Stato.** Un test su modelli reali; tutto il resto è simulato. Il protocollo per altri test reali è in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), e chi vuole aiutare a eseguirlo è benvenuto.
+
+**Paper (bozza, scritta prima del test reale e in revisione).** [La regola del 5x](paper/paper.it.pdf), anche [in inglese](paper/paper.pdf).
+
+## La regola del 5x (simulata)
 
 Si prende il rapporto di costo fra modelli vicini: dal piccolo al medio, dal medio al grande.
 
@@ -26,6 +48,8 @@ Spesso il terzo stadio migliore non è un modello. In queste simulazioni uno sta
 È una regola pratica ricavata da carichi simulati (esperimento 8), e i suoi bordi sono sfumati: fra 3x e 4x, con segnale debole e richieste in gran parte facili, un modello intermedio guadagna già fino a 4 punti. È l'affermazione che questo repository vuole più di tutte vedere provata su modelli reali.
 
 Il risparmio in sé lo decide il carico di lavoro, non il metodo: contano soprattutto la quota di richieste facili e il rapporto di costo fra i modelli.
+
+Il test reale è coerente con il ramo inferiore della regola: su quattro terne di modelli, tutte sotto 5x, il modello intermedio ha chiaramente perso calcolo in tre, e lo stadio di ricerca nello storico ha chiaramente guadagnato in tutte e quattro. È andato oltre quanto la simulazione prevedeva: hanno perso perfino le cascate a due modelli. Nessuna terna è arrivata a 5x, quindi il ramo superiore resta da provare.
 
 ## Pianifica il tuo carico di lavoro
 
