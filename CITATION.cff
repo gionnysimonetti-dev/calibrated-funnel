@@ -1,10 +1,18 @@
 cff-version: 1.2.0
 message: "If you use this work, please cite it as below."
-title: "Calibrated Funnel Inference: simulation toolkit"
+title: "Calibrated Funnel Inference: history before models in confidence-gated cascades"
+abstract: "A measured test and a reproducible toolkit for model cascades on local hardware. On 4,500 real requests routed to 10 departments, a deterministic lookup in 15,000 labelled past requests followed by a 1.5B-parameter local model matches a 7.6B-parameter model alone at about one ninth of the compute."
 type: software
 authors:
   - family-names: Simonetti
     given-names: Giovanni
-version: 0.1.0
-date-released: 2026-10-07
+    orcid: "https://orcid.org/0009-0008-7543-6737"
+repository-code: "https://github.com/gionnysimonetti-dev/calibrated-funnel"
+keywords:
+  - LLM cascades
+  - local inference
+  - confidence calibration
+  - knowledge management
+version: 1.0.0
+date-released: 2026-10-12
 license: MIT
