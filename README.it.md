@@ -32,7 +32,7 @@ In una cascata risponde prima un modello piccolo, e la richiesta sale a un model
 
 **Stato.** Un test su modelli reali; tutto il resto è simulato. Il protocollo per altri test reali è in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), e chi vuole aiutare a eseguirlo è benvenuto.
 
-**Paper (bozza 0.2).** [History Before Models](paper/paper.pdf), lo studio misurato, in inglese; la versione italiana è in preparazione. Il rapporto precedente, solo simulato, [La regola del 5x](paper/five-x-rule.it.pdf) (anche [in inglese](paper/five-x-rule.pdf)), resta come riferimento.
+**Paper (bozza 0.2).** [Lo storico prima dei modelli](paper/paper.it.pdf), lo studio misurato, anche [in inglese](paper/paper.pdf). Il rapporto precedente, solo simulato, [La regola del 5x](paper/five-x-rule.it.pdf) (anche [in inglese](paper/five-x-rule.pdf)), resta come riferimento.
 
 ## La regola del 5x (simulata)
 

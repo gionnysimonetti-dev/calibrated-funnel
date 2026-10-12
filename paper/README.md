@@ -2,7 +2,8 @@
 
 **History Before Models.** Labelled history, small language models and cascades for request classification on local hardware. Draft 0.2, measured.
 
-- English: [paper.pdf](paper.pdf), source [paper.md](paper.md). Italian version in preparation.
+- English: [paper.pdf](paper.pdf), source [paper.md](paper.md)
+- Italiano: [paper.it.pdf](paper.it.pdf), sorgente [paper.it.md](paper.it.md)
 
 **The 5x Rule.** Choosing the third stage of a confidence-gated model cascade. Draft 0.1, simulation only, kept for reference.
 
@@ -19,6 +20,7 @@ python paper/make_figure_history.py
 python paper/make_figures.py                       # figures of the 5x rule report
 cd paper
 pandoc paper.md -o paper.pdf --pdf-engine=xelatex
+pandoc paper.it.md -o paper.it.pdf --pdf-engine=xelatex
 pandoc five-x-rule.md -o five-x-rule.pdf --pdf-engine=xelatex
 pandoc five-x-rule.it.md -o five-x-rule.it.pdf --pdf-engine=xelatex
 ```
