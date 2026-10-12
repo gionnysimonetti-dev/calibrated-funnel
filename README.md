@@ -6,7 +6,7 @@
 
 ## The measured result
 
-4,500 real user requests, routed to 10 departments, with a history of 15,000 requests already labelled. Four open models of one family, from 0.5 to 7.6 billion parameters, run locally on an office PC with no graphics card. A deterministic stage looks the request up in the history and answers only when the five closest past requests agree; everything else goes to a model.
+4,500 crowdsourced user requests, routed to 10 departments, with a history of 15,000 requests already labelled. Four open models of one family, from 0.5 to 7.6 billion parameters, run locally on an office PC with no graphics card. A deterministic stage looks the request up in the history and answers only when the five closest past requests agree; everything else goes to a model.
 
 Per 100 requests, measured on a held-out half:
 
@@ -15,8 +15,10 @@ Per 100 requests, measured on a held-out half:
 | Large model alone (7.6B) | large model: 100 | 87 | 100 |
 | History, then small model (1.5B) | history: 63, small model: 37 | about 87 | 11 |
 | History, then large model | history: 63, large model: 37 | 92 | 37 |
+| **History alone, used by a classifier** | classifier: 100 | **96** | **about 0** |
 
-- The history alone answers 63 requests in 100, 98.7% of them right, at a negligible cost.
+- A standard text classifier trained on the same history (TF-IDF, logistic regression) beats every model: 95.9% right (95% interval 95.1% to 96.7%), at a cost tens of thousands of times smaller. The language model earns its place where the history is thin: with fewer than about 100 labelled examples per department it beats the classifier, and a classifier that hands its uncertain requests to it is the best design ([realtest/BASELINES_departments.md](realtest/BASELINES_departments.md)).
+- The lookup alone answers 63 requests in 100, 98.7% of them right, at a negligible cost.
 - History plus a small model matches the large model with a ninth of the compute: accuracy difference +0.5 points, 95% interval -1.2 to +2.1.
 - Cascades of models alone, small first and large when unsure, cost 15% to 74% more than the large model alone. The models' confidence separates right from wrong answers poorly (AUROC 0.71 to 0.77), so almost everything climbs to the large model anyway.
 
@@ -30,7 +32,7 @@ In a cascade, a small model answers first and a query moves up to a larger model
 
 **Status.** One real-model test; everything else is simulated. The protocol for further real-model runs is in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), and help running it is welcome.
 
-**Paper (draft, written before the real test and being revised).** [The 5x Rule](paper/paper.pdf), also [in Italian](paper/paper.it.pdf).
+**Paper (draft 0.2).** [History Before Models](paper/paper.pdf): the measured study. The earlier simulation report, [The 5x Rule](paper/five-x-rule.pdf) (also [in Italian](paper/five-x-rule.it.pdf)), is kept for reference.
 
 ## The 5x rule (simulated)
 
