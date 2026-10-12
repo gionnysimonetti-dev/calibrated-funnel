@@ -32,7 +32,7 @@ In a cascade, a small model answers first and a query moves up to a larger model
 
 **Status.** One real-model test; everything else is simulated. The protocol for further real-model runs is in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), and help running it is welcome.
 
-**Paper (draft 0.2).** [History Before Models](paper/paper.pdf): the measured study. The earlier simulation report, [The 5x Rule](paper/five-x-rule.pdf) (also [in Italian](paper/five-x-rule.it.pdf)), is kept for reference.
+**Paper (draft 0.2).** [History Before Models](paper/paper.pdf): the measured study, also [in Italian](paper/paper.it.pdf). The earlier simulation report, [The 5x Rule](paper/five-x-rule.pdf) (also [in Italian](paper/five-x-rule.it.pdf)), is kept for reference.
 
 ## The 5x rule (simulated)
 
