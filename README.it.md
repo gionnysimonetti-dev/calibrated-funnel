@@ -1,6 +1,8 @@
 # Calibrated Funnel Inference
 
-**Lo storico prima del modello.** Nella classificazione dei ticket la maggior parte del lavoro è memoria, non intelligenza. Un test misurato e uno strumento riproducibile per le cascate di modelli su hardware locale.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23313670.svg)](https://doi.org/10.5281/zenodo.23313670)
+
+**Lo storico prima del modello.** Nella classificazione delle richieste la maggior parte del lavoro è memoria, non intelligenza. Un test misurato e uno strumento riproducibile per le cascate di modelli su hardware locale.
 
 *Read in English: [README.md](README.md)*
 
@@ -261,3 +263,9 @@ Il codice delle simulazioni e parte dell'analisi statistica sono stati sviluppat
 Codice con licenza MIT. Per citare questo lavoro vedi [CITATION.cff](CITATION.cff).
 
 Autore: Giovanni Simonetti.
+
+## Come citare
+
+Simonetti, G. (2026). *History Before Models: labelled history, small language models and cascades for request classification on local hardware* (rapporto tecnico e codice). Zenodo. https://doi.org/10.5281/zenodo.23313670
+
+Questo DOI punta sempre all'ultima versione; ogni release ha anche il proprio (v1.1.1: 10.5281/zenodo.23313671).
