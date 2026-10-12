@@ -6,7 +6,7 @@
 
 ## Il risultato misurato
 
-4.500 richieste reali di utenti, da smistare verso 10 reparti, con uno storico di 15.000 richieste già classificate. Quattro modelli aperti della stessa famiglia, da 0,5 a 7,6 miliardi di parametri, eseguiti in locale su un PC da ufficio senza scheda grafica. Uno stadio deterministico cerca la richiesta nello storico e risponde solo quando le cinque richieste passate più simili concordano; tutto il resto passa a un modello.
+4.500 richieste di utenti scritte per un dataset pubblico, da smistare verso 10 reparti, con uno storico di 15.000 richieste già classificate. Quattro modelli aperti della stessa famiglia, da 0,5 a 7,6 miliardi di parametri, eseguiti in locale su un PC da ufficio senza scheda grafica. Uno stadio deterministico cerca la richiesta nello storico e risponde solo quando le cinque richieste passate più simili concordano; tutto il resto passa a un modello.
 
 Su 100 richieste, misurato su una metà tenuta da parte:
 
@@ -15,8 +15,10 @@ Su 100 richieste, misurato su una metà tenuta da parte:
 | Solo modello grande (7,6 mld) | modello grande: 100 | 87 | 100 |
 | Storico, poi modello piccolo (1,5 mld) | storico: 63, modello piccolo: 37 | circa 87 | 11 |
 | Storico, poi modello grande | storico: 63, modello grande: 37 | 92 | 37 |
+| **Solo storico, usato da un classificatore** | classificatore: 100 | **96** | **circa 0** |
 
-- Lo storico da solo risolve 63 richieste su 100, il 98,7% correttamente, a un costo trascurabile.
+- Un classificatore di testo standard addestrato sullo stesso storico (TF-IDF, regressione logistica) batte tutti i modelli: 95,9% di risposte giuste (intervallo al 95% da 95,1% a 96,7%), con un costo decine di migliaia di volte più basso. Il modello linguistico serve dove lo storico è scarso: con meno di circa 100 esempi etichettati per reparto batte il classificatore, e un classificatore che gli passa le richieste su cui è incerto è la soluzione migliore ([realtest/BASELINES_departments.md](realtest/BASELINES_departments.md)).
+- La ricerca nello storico da sola risolve 63 richieste su 100, il 98,7% correttamente, a un costo trascurabile.
 - Storico più modello piccolo pareggia il modello grande con un nono del calcolo: differenza di accuratezza +0,5 punti, intervallo al 95% da -1,2 a +2,1.
 - Le cascate di soli modelli, prima il piccolo e poi il grande quando il piccolo non è sicuro, costano dal 15% al 74% in più del modello grande da solo. La fiducia dei modelli distingue male le risposte giuste da quelle sbagliate (AUROC fra 0,71 e 0,77), quindi quasi tutto sale comunque al modello grande.
 
@@ -30,7 +32,7 @@ In una cascata risponde prima un modello piccolo, e la richiesta sale a un model
 
 **Stato.** Un test su modelli reali; tutto il resto è simulato. Il protocollo per altri test reali è in [docs/REAL_MODEL_PROTOCOL.md](docs/REAL_MODEL_PROTOCOL.md), e chi vuole aiutare a eseguirlo è benvenuto.
 
-**Paper (bozza, scritta prima del test reale e in revisione).** [La regola del 5x](paper/paper.it.pdf), anche [in inglese](paper/paper.pdf).
+**Paper (bozza 0.2).** [History Before Models](paper/paper.pdf), lo studio misurato, in inglese; la versione italiana è in preparazione. Il rapporto precedente, solo simulato, [La regola del 5x](paper/five-x-rule.it.pdf) (anche [in inglese](paper/five-x-rule.pdf)), resta come riferimento.
 
 ## La regola del 5x (simulata)
 

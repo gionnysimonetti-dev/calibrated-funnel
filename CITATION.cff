@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this work, please cite it as below."
-title: "Calibrated Funnel Inference: history before models in confidence-gated cascades"
-abstract: "A measured test and a reproducible toolkit for model cascades on local hardware. On 4,500 real requests routed to 10 departments, a deterministic lookup in 15,000 labelled past requests followed by a 1.5B-parameter local model matches a 7.6B-parameter model alone at about one ninth of the compute."
+title: "History Before Models: labelled history, small language models and cascades for request classification on local hardware"
+abstract: "A measured study and reproducible toolkit. On 4,500 crowdsourced requests routed to 10 departments, a text classifier trained on 15,000 labelled past requests answers 95.9% correctly, against 86.6% for a 7.6B-parameter local language model; cascades of models alone cost more than the large model; the language model earns its place where labelled history is thin."
 type: software
 authors:
   - family-names: Simonetti
@@ -13,6 +13,6 @@ keywords:
   - local inference
   - confidence calibration
   - knowledge management
-version: 1.0.0
+version: 1.1.0
 date-released: 2026-10-12
 license: MIT

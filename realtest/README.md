@@ -30,6 +30,7 @@ ollama pull qwen2.5:7b
 
 python -m realtest.run_models --task departments     # runs every model on every request
 python -m realtest.analyze --task departments        # seconds; writes realtest/REPORT_departments.md
+python -m realtest.baselines --task departments      # under a minute; writes realtest/BASELINES_departments.md (needs scikit-learn)
 ```
 
 `run_models` can be stopped and restarted: stored requests are skipped. It prints the time left. For a short trial on a fixed subset, add `--limit 100`. `--shots N` shows the models N example requests per category, taken from the history.
