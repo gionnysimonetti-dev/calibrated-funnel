@@ -260,7 +260,7 @@ The simulation code and part of the statistical analysis were developed with an 
 
 Code under the MIT License. See [CITATION.cff](CITATION.cff) to cite this work.
 
-Author: Giovanni Simonetti.
+Author: Giovanni Simonetti, evidence-based AI governance and AI in production. [LinkedIn](https://www.linkedin.com/in/giovanni-simonetti-247374211/) · [ORCID 0009-0008-7543-6737](https://orcid.org/0009-0008-7543-6737)
 
 ## How to cite
 
