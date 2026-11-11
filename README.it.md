@@ -262,7 +262,7 @@ Il codice delle simulazioni e parte dell'analisi statistica sono stati sviluppat
 
 Codice con licenza MIT. Per citare questo lavoro vedi [CITATION.cff](CITATION.cff).
 
-Autore: Giovanni Simonetti.
+Autore: Giovanni Simonetti, governance dell'AI basata su evidenze e AI in produzione. [LinkedIn](https://www.linkedin.com/in/giovanni-simonetti-247374211/) · [ORCID 0009-0008-7543-6737](https://orcid.org/0009-0008-7543-6737)
 
 ## Come citare
 
